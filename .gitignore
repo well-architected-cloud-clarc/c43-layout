@@ -1,24 +1,8 @@
-node_modules
-dist
-*tfstate*
-cdktf.out
-fo0
+/target
+/out
+.direnv
 .idea
 .gemini
-.direnv
-test
-dist-test
-
-# Python
-__pycache__/
-*.pyc
-.pytest_cache/
 
 # drawio backups
 .$*.bkp
-
-# rust
-/target
-
-# rendered diagrams (scripts/render.sh)
-/out
