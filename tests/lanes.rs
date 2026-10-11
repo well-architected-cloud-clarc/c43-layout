@@ -75,7 +75,7 @@ fn bands_inside_a_border_between_borders_outside() {
 #[test]
 fn no_borders_each_lane_its_own_width_outer_lanes_keep_the_margin() {
     let k = |l: &str, _: &str| if l == "v2" { 2 } else { 1 };
-    let plan = lane_plan(5.0, &IndexMap::new(), Box::new(k), 2.0, &keys(&["v0", "v1", "v2", "v3"]));
+    let plan = lane_plan(5.0, &IndexMap::new(), Box::new(k), 2.0, false, &keys(&["v0", "v1", "v2", "v3"]));
     assert_eq!(plan.width("v0"), MARGIN, "outer, contents need only 3");
     assert_eq!(plan.width("v1"), 3.0, "inner, one band of reach 1");
     assert_eq!(plan.width("v2"), 5.0, "inner, reach 2 needs 5");
@@ -87,7 +87,7 @@ fn no_borders_each_lane_its_own_width_outer_lanes_keep_the_margin() {
 
 #[test]
 fn no_lane_is_even_or_below_the_floor() {
-    let plan = lane_plan(5.0, &IndexMap::new(), Box::new(|_: &str, _: &str| 0), 2.0, &keys(&["v0", "v1", "v2", "h0", "h1", "h2"]));
+    let plan = lane_plan(5.0, &IndexMap::new(), Box::new(|_: &str, _: &str| 0), 2.0, false, &keys(&["v0", "v1", "v2", "h0", "h1", "h2"]));
     for l in ["v1", "h1"] {
         assert_eq!(plan.width(l), LANE_MIN);
     }
@@ -100,7 +100,7 @@ fn no_lane_is_even_or_below_the_floor() {
 fn borders_and_bands_do_not_collide_and_fit_their_lane() {
     let (g, p) = setup();
     let bs = borders(&g, &p);
-    let plan = lane_plan(5.0, &bs, Box::new(|_: &str, _: &str| 0), 2.0, &keys(&["v0", "v1", "v2", "v3", "h0", "h1"]));
+    let plan = lane_plan(5.0, &bs, Box::new(|_: &str, _: &str| 0), 2.0, false, &keys(&["v0", "v1", "v2", "v3", "h0", "h1"]));
     let xs = [plan.pos("v0", "h0", 0.0), plan.border("v0", Half::High, 1), plan.pos("v0", "h1", 0.0), plan.border("v0", Half::High, 2), plan.pos("v0", "m", 0.0)];
     let mut sorted = xs;
     sorted.sort_by(|a, b| b.partial_cmp(a).unwrap());
@@ -114,7 +114,7 @@ fn borders_and_bands_do_not_collide_and_fit_their_lane() {
 fn top_lane_reserves_title_room_inside_each_top_border() {
     let (g, p) = setup();
     let bs = borders(&g, &p);
-    let plan = lane_plan(5.0, &bs, Box::new(|_: &str, _: &str| 0), 2.0, &keys(&["v0", "v1", "v2", "v3", "h0", "h1"]));
+    let plan = lane_plan(5.0, &bs, Box::new(|_: &str, _: &str| 0), 2.0, false, &keys(&["v0", "v1", "v2", "v3", "h0", "h1"]));
     assert!(plan.border("h0", Half::High, 1) - plan.pos("h0", "h0", 0.0) <= -2.0, "title room between H border and its tracks");
     assert!(plan.width("h0") >= 9.0);
 }

@@ -43,7 +43,7 @@ pub fn build(g: &Graph, s: &State, sizes: &SizeHints, min_s: f64) -> LayoutResul
     // while tracks are being improved every band may use the greedy range
     let side = min_s.max(side_count(&s.ports, Some(&g.group_ids)) as f64);
     let k = greedy.values().map(|t| t.abs()).fold(0, i32::max);
-    let f = frame_for(g, p, side, lane_plan(side, &borders(g, p), Box::new(move |_, _| k), title_slots(sizes), &lane_keys(p)), &segs);
+    let f = frame_for(g, p, side, lane_plan(side, &borders(g, p), Box::new(move |_, _| k), title_slots(sizes), sizes.title_bottom, &lane_keys(p)), &segs);
     let edges: Vec<usize> = g.edges.iter().map(|e| e.id).collect();
     let tracks = improve_tracks(&segs, &greedy, &|edge, t| edge_polyline(g, p, &s.ports, &f, &routes[edge], t), &edges);
     let layout = build_layout(g, p, &s.ports, &routes, &tracks, sizes, min_s, &segs);

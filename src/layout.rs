@@ -119,7 +119,7 @@ fn band_reach<'a>(segs: &[Seg], tracks: &Tracks) -> Reach<'a> {
 pub fn build_layout(g: &Graph, p: &Placement, ports: &Ports, routes: &[Route], tracks: &Tracks, sizes: &SizeHints, min_s: f64, segs: &[Seg]) -> Layout {
     let s = min_s.max(side_count(ports, Some(&g.group_ids)) as f64);
     let slots = title_slots(sizes);
-    let plan = lane_plan(s, &borders(g, p), band_reach(segs, tracks), slots, &lane_keys(p));
+    let plan = lane_plan(s, &borders(g, p), band_reach(segs, tracks), slots, sizes.title_bottom, &lane_keys(p));
     let f = frame_for(g, p, s, plan, segs);
     let end = |lane: &str| f.plan.start(lane) + f.plan.width(lane);
     let (grid_w, grid_h) = (end(&format!("v{}", p.cols)), end(&format!("h{}", p.rows)));
@@ -154,7 +154,7 @@ pub fn build_layout(g: &Graph, p: &Placement, ports: &Ports, routes: &[Route], t
                     y: r.y,
                     w: r.w,
                     h: r.h,
-                    title: TextBlock { text: gr.label.clone(), x: r.x + 0.5, y: r.y + 0.25, w: tw, h: title_h },
+                    title: TextBlock { text: gr.label.clone(), x: r.x + 0.5, y: if sizes.title_bottom { r.y + r.h - 0.25 - title_h } else { r.y + 0.25 }, w: tw, h: title_h },
                 }
             })
             .collect(),

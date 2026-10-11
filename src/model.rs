@@ -85,11 +85,14 @@ pub struct SizeHints {
     /// height of a group title line
     #[serde(default = "one")]
     pub title_height: f64,
+    /// keep the group title band at the bottom of the group instead of the top
+    #[serde(default)]
+    pub title_bottom: bool,
 }
 
 impl Default for SizeHints {
     fn default() -> Self {
-        SizeHints { node: IndexMap::new(), group_title: IndexMap::new(), title_height: 1.0 }
+        SizeHints { node: IndexMap::new(), group_title: IndexMap::new(), title_height: 1.0, title_bottom: false }
     }
 }
 

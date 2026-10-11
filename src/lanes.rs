@@ -139,7 +139,7 @@ impl LanePlan<'_> {
     }
 }
 
-pub fn lane_plan<'a>(s: f64, bs: &IndexMap<String, Borders>, k: Reach<'a>, title_slots: f64, lane_keys: &[String]) -> LanePlan<'a> {
+pub fn lane_plan<'a>(s: f64, bs: &IndexMap<String, Borders>, k: Reach<'a>, title_slots: f64, title_bottom: bool, lane_keys: &[String]) -> LanePlan<'a> {
     let mut plan = LanePlan { k, info: IndexMap::new(), widths: IndexMap::new(), starts: IndexMap::new() };
     let side = |plan: &LanePlan, lane: &str, half: Half| -> SideInfo {
         let ranks = bs.get(lane).map(|b| if half == Half::Low { &b.low } else { &b.high });
@@ -149,7 +149,7 @@ pub fn lane_plan<'a>(s: f64, bs: &IndexMap<String, Borders>, k: Reach<'a>, title
         for b in 0..n {
             out.start.push(at);
             let tag = if half == Half::Low { 'l' } else { 'h' };
-            at += plan.slots(lane, &format!("{tag}{b}")) + if half == Half::High && lane.starts_with('h') { title_slots } else { 0.0 };
+            at += plan.slots(lane, &format!("{tag}{b}")) + if (half == Half::High) != title_bottom && lane.starts_with('h') { title_slots } else { 0.0 };
             out.border.push(at);
             at += 1.0;
         }
