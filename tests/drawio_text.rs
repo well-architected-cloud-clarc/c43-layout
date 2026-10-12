@@ -70,3 +70,10 @@ fn a_face_sets_the_width_of_text() {
     assert_eq!(wrap_in("ab cd", 25.0, 10.0, &wide), lines(&["ab", "cd"]));
     assert_eq!(wrap_in("ab cd", 40.0, 10.0, &HELVETICA), lines(&["ab cd"]));
 }
+
+#[test]
+fn edge_label_split_width_is_given() {
+    use c43_layout::drawio::text::{edge_label_lines_in, HELVETICA};
+    assert_eq!(edge_label_lines_in("persists hellos", &HELVETICA, 200.0), ["persists hellos"]);
+    assert_eq!(edge_label_lines_in("persists hellos", &HELVETICA, 50.0).len(), 2);
+}

@@ -122,13 +122,13 @@ pub const EDGE_LABEL_LINES: usize = 3;
 
 /// an edge label split into at most `EDGE_LABEL_LINES` lines of about equal width, one line when it is short
 pub fn edge_label_lines(label: &str) -> Vec<String> {
-    edge_label_lines_in(label, &HELVETICA)
+    edge_label_lines_in(label, &HELVETICA, EDGE_LABEL_PX)
 }
 
-/// as `edge_label_lines`, measured with the given face
-pub fn edge_label_lines_in(label: &str, face: &Face) -> Vec<String> {
+/// as `edge_label_lines`, measured with the given face; a label wider than `max_px` is split
+pub fn edge_label_lines_in(label: &str, face: &Face, max_px: f64) -> Vec<String> {
     let total = text_width_in(label, LABEL_PX, face);
-    let n = ((total / EDGE_LABEL_PX).ceil() as usize).clamp(1, EDGE_LABEL_LINES);
+    let n = ((total / max_px).ceil() as usize).clamp(1, EDGE_LABEL_LINES);
     if n == 1 {
         return vec![label.to_string()];
     }
