@@ -13,20 +13,37 @@ pub const UNIT_PX: f64 = 20.0;
 const NARROW: &str = "iljtfr.,:;'\"|!()[]/ ";
 const WIDE: &str = "mwMW@%&";
 
-/// estimated width in px: char classes × font size, a little conservative for drawio's Helvetica
+/// how wide characters are: em widths per char and a factor for the whole face
+#[derive(Clone, Copy)]
+pub struct Face {
+    pub em: fn(char) -> f64,
+    pub factor: f64,
+}
+
+fn helvetica_em(ch: char) -> f64 {
+    if NARROW.contains(ch) {
+        0.34
+    } else if WIDE.contains(ch) {
+        0.9
+    } else if ch.is_ascii_uppercase() {
+        0.7
+    } else {
+        0.58
+    }
+}
+
+/// drawio's default font, a little conservative
+pub const HELVETICA: Face = Face { em: helvetica_em, factor: 1.0 };
+pub const HELVETICA_BOLD: Face = Face { em: helvetica_em, factor: 1.1 };
+
+/// estimated width in px: the face's em widths × font size
+pub fn text_width_in(s: &str, font_px: f64, face: &Face) -> f64 {
+    s.chars().map(face.em).sum::<f64>() * font_px * face.factor
+}
+
+/// estimated width in px of the default font: char classes × font size, a little conservative for drawio's Helvetica
 pub fn text_width(s: &str, font_px: f64, bold: bool) -> f64 {
-    let em = s.chars().fold(0.0, |em, ch| {
-        em + if NARROW.contains(ch) {
-            0.34
-        } else if WIDE.contains(ch) {
-            0.9
-        } else if ch.is_ascii_uppercase() {
-            0.7
-        } else {
-            0.58
-        }
-    });
-    em * font_px * if bold { 1.1 } else { 1.0 }
+    text_width_in(s, font_px, if bold { &HELVETICA_BOLD } else { &HELVETICA })
 }
 
 fn is_sep(c: char) -> bool {
@@ -57,14 +74,19 @@ fn pieces(s: &str) -> Vec<(String, bool)> {
 
 /// greedy line breaking to `max_px`; None when a single piece is wider than that
 pub fn wrap(s: &str, max_px: f64, font_px: f64, bold: bool) -> Option<Vec<String>> {
+    wrap_in(s, max_px, font_px, if bold { &HELVETICA_BOLD } else { &HELVETICA })
+}
+
+/// as `wrap`, measured with the given face
+pub fn wrap_in(s: &str, max_px: f64, font_px: f64, face: &Face) -> Option<Vec<String>> {
     let mut lines: Vec<String> = Vec::new();
     let mut cur = String::new();
     for (text, space) in pieces(s) {
-        if text_width(&text, font_px, bold) > max_px {
+        if text_width_in(&text, font_px, face) > max_px {
             return None;
         }
         let joined = format!("{cur}{}{text}", if !cur.is_empty() && space { " " } else { "" });
-        if cur.is_empty() || text_width(&joined, font_px, bold) <= max_px {
+        if cur.is_empty() || text_width_in(&joined, font_px, face) <= max_px {
             cur = joined;
         } else {
             lines.push(std::mem::replace(&mut cur, text));
@@ -100,11 +122,16 @@ pub const EDGE_LABEL_LINES: usize = 3;
 
 /// an edge label split into at most `EDGE_LABEL_LINES` lines of about equal width, one line when it is short
 pub fn edge_label_lines(label: &str) -> Vec<String> {
-    let total = text_width(label, LABEL_PX, false);
-    let n = ((total / EDGE_LABEL_PX).ceil() as usize).clamp(1, EDGE_LABEL_LINES);
+    edge_label_lines_in(label, &HELVETICA, EDGE_LABEL_PX)
+}
+
+/// as `edge_label_lines`, measured with the given face; a label wider than `max_px` is split
+pub fn edge_label_lines_in(label: &str, face: &Face, max_px: f64) -> Vec<String> {
+    let total = text_width_in(label, LABEL_PX, face);
+    let n = ((total / max_px).ceil() as usize).clamp(1, EDGE_LABEL_LINES);
     if n == 1 {
         return vec![label.to_string()];
     }
     // the narrowest width that wraps into n lines (a little over the even share, wider while a word does not fit)
-    (0..).map(|k| total / n as f64 * 1.1 + 4.0 * k as f64).find_map(|px| wrap(label, px, LABEL_PX, false).filter(|ls| ls.len() <= n)).unwrap_or_else(|| vec![label.to_string()])
+    (0..).map(|k| total / n as f64 * 1.1 + 4.0 * k as f64).find_map(|px| wrap_in(label, px, LABEL_PX, face).filter(|ls| ls.len() <= n)).unwrap_or_else(|| vec![label.to_string()])
 }
