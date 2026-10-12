@@ -1,5 +1,6 @@
 //! A layout as a drawio document.
 use super::header::Header;
+use super::text::Face;
 use crate::js::num;
 use crate::model::{Layout, LayoutEdge, LayoutGroup, LayoutNode, Rect, Side, TextBlock};
 
@@ -54,6 +55,32 @@ pub struct Styler<'a> {
     pub label_font: f64,
 }
 
+/// a font family of the drawing: its drawio name, the embedded font data and how wide it sets text
+pub struct Font<'a> {
+    pub family: &'a str,
+    /// the `fontSource` value: the url-encoded `data:` URI of the font file
+    pub source: &'a str,
+    pub face: Face,
+}
+
+impl Font<'_> {
+    /// the style part that sets text in this font
+    pub fn style(&self) -> String {
+        format!("fontFamily={};", self.family)
+    }
+
+    /// an empty, 1 px cell that declares the font (its data travels once per family, not with every text)
+    fn carrier(&self, id: &str) -> String {
+        vertex(id, "", &format!("text;html=0;{}fontSource={};", self.style(), self.source), 0.0, 0.0, 1.0, 1.0)
+    }
+}
+
+/// the fonts of a drawing: for regular text and for names (the title)
+pub struct Fonts<'a> {
+    pub regular: Font<'a>,
+    pub name: Font<'a>,
+}
+
 /// what the renderer adds to the engine's layout: pixel scale, label lines, header band, outer frame, fonts
 pub struct Drawing<'a> {
     pub layout: &'a Layout,
@@ -63,6 +90,8 @@ pub struct Drawing<'a> {
     pub frame: Rect,
     pub style: Styler<'a>,
     pub title_font: f64,
+    /// fonts of the header text (the look sets its own for the cells it draws); none: the viewer's default
+    pub fonts: Option<&'a Fonts<'a>>,
     /// style of the outer diagram border
     pub frame_style: &'a str,
 }
@@ -74,14 +103,22 @@ pub fn to_drawio(d: &Drawing) -> String {
     // the margin also paints the white background (the drawio CLI exports SVG transparent otherwise)
     cells.push(vertex("margin", "", "strokeColor=none;fillColor=#ffffff;", f.x * u - m, f.y * u - m, f.w * u + 2.0 * m, f.h * u + 2.0 * m));
     cells.push(vertex("frame", "", d.frame_style, f.x * u, f.y * u, f.w * u, f.h * u));
+    if let Some(f) = d.fonts {
+        cells.push(f.regular.carrier("font-regular"));
+        cells.push(f.name.carrier("font-name"));
+    }
     // header text is plain, already wrapped into lines (so it exports as text, not as an image)
     let text = format!("text;html=0;whiteSpace=nowrap;align=left;verticalAlign=top;spacing=0;fontSize={};", num(d.title_font));
+    let (title_style, desc_style) = match d.fonts {
+        Some(f) => (format!("{text}{}", f.name.style()), format!("{text}{}", f.regular.style())),
+        None => (format!("{text}fontStyle=1;"), text),
+    };
     let block = |id: &str, b: &TextBlock, style: &str| vertex(id, &esc(&b.text).replace('\n', "&#xa;"), style, b.x * u, b.y * u, b.w * u, b.h * u);
     if let Some(t) = d.header.as_ref().and_then(|h| h.title.as_ref()) {
-        cells.push(block("title", t, &format!("{text}fontStyle=1;")));
+        cells.push(block("title", t, &title_style));
     }
     if let Some(t) = d.header.as_ref().and_then(|h| h.description.as_ref()) {
-        cells.push(block("description", t, &text));
+        cells.push(block("description", t, &desc_style));
     }
     // groups (outer first, behind nodes)
     let is_group = |id: &str| l.groups.iter().any(|g| g.id == id);

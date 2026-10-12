@@ -60,3 +60,13 @@ fn an_unbreakable_edge_label_is_kept_whole() {
     use c43_layout::drawio::text::edge_label_lines;
     assert_eq!(edge_label_lines("averyveryveryverylonglabelwithoutspacesatall"), ["averyveryveryverylonglabelwithoutspacesatall"]);
 }
+
+#[test]
+fn a_face_sets_the_width_of_text() {
+    use c43_layout::drawio::text::{text_width_in, wrap_in, Face, HELVETICA};
+    let wide = Face { em: |_| 1.0, factor: 1.0 };
+    assert_eq!(text_width_in("abcd", 10.0, &wide), 40.0);
+    assert_eq!(text_width_in("abcd", 10.0, &HELVETICA), text_width("abcd", 10.0, false));
+    assert_eq!(wrap_in("ab cd", 25.0, 10.0, &wide), lines(&["ab", "cd"]));
+    assert_eq!(wrap_in("ab cd", 40.0, 10.0, &HELVETICA), lines(&["ab cd"]));
+}
