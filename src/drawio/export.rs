@@ -9,7 +9,8 @@ pub fn esc(s: &str) -> String {
 }
 
 /// port position as drawio's relative exit/entry constraint
-fn rel(side: Side, index: usize, count: usize) -> (f64, f64) {
+fn rel(side: Side, index: usize, count: usize, align: Option<(usize, usize)>) -> (f64, f64) {
+    let (index, count) = align.unwrap_or((index, count));
     let a = (2 * index + 1) as f64 / (2 * count) as f64;
     match side {
         Side::Right => (1.0, a),
@@ -126,8 +127,8 @@ pub fn to_drawio(d: &Drawing) -> String {
     cells.extend(l.groups.iter().flat_map(|g| (d.style.group)(g, u)));
     cells.extend(l.nodes.iter().zip(&d.node_lines).flat_map(|(n, ls)| (d.style.node)(n, ls, u)));
     for e in &l.edges {
-        let (ex, ey) = rel(e.src.side, e.src.index, e.src.count);
-        let (nx, ny) = rel(e.dst.side, e.dst.index, e.dst.count);
+        let (ex, ey) = rel(e.src.side, e.src.index, e.src.count, e.src.align);
+        let (nx, ny) = rel(e.dst.side, e.dst.index, e.dst.count, e.dst.align);
         let draw = (d.style.edge)(e);
         let ((xdx, xdy), (ndx, ndy)) = draw.moved.unwrap_or(((0.0, 0.0), (0.0, 0.0)));
         let style = format!(

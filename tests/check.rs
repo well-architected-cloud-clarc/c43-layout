@@ -24,7 +24,7 @@ fn port(n: &LayoutNode, side: Side, a: f64) -> PortOut {
         Side::Top => (n.x + a, n.y),
         Side::Bottom => (n.x + a, n.y + S),
     };
-    PortOut { side, index: 0, count: 1, inner: false, snapped: false, x, y }
+    PortOut { side, index: 0, count: 1, inner: false, align: None, x, y }
 }
 
 fn edge_with(id: usize, a: &LayoutNode, b: &LayoutNode, bs: Side, mid: &[Pt], src: PortOut) -> LayoutEdge {

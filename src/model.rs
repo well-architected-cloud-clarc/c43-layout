@@ -358,9 +358,9 @@ pub struct PortOut {
     pub count: usize,
     #[serde(skip_serializing_if = "is_false")]
     pub inner: bool,
-    /// moved along its side to face the other end of a straight connection (exempt from even spacing)
-    #[serde(skip_serializing_if = "is_false")]
-    pub snapped: bool,
+    /// moved along its side to the height of this facing slot (index, count), so the connection runs straight (exempt from even spacing)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub align: Option<(usize, usize)>,
     pub x: f64,
     pub y: f64,
 }

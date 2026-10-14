@@ -34,10 +34,22 @@ pub fn min_side(g: &Graph, sizes: &SizeHints) -> f64 {
     g.nodes.iter().filter_map(|n| sizes.node.get(&n.id)).fold(1.0, |a, b| a.max(*b))
 }
 
-/// state → routes → tracks → geometry → metrics; `min_s` = node side the labels need
+/// state → routes → tracks → geometry → metrics; `min_s` = node side the labels need.
+/// The search (repair) judges states by this build: ports on their even slots.
 pub fn build(g: &Graph, s: &State, sizes: &SizeHints, min_s: f64) -> LayoutResult {
+    build_with(g, s, sizes, min_s, false)
+}
+
+/// the same for the state the search ended on: where the graph allows it, the ports of straight connections
+/// move to face each other first (`ports::snap_ports`). Not part of the search: it would trade a short bend
+/// for a different slot order that merely saves a crossing by a long detour.
+pub fn build_final(g: &Graph, s: &State, sizes: &SizeHints, min_s: f64) -> LayoutResult {
+    build_with(g, s, sizes, min_s, g.snap_ports)
+}
+
+fn build_with(g: &Graph, s: &State, sizes: &SizeHints, min_s: f64, snap: bool) -> LayoutResult {
     let p = &s.placement;
-    let ports = &(if g.snap_ports { snap_ports(g, p, &s.ports) } else { s.ports.clone() });
+    let ports = &(if snap { snap_ports(g, p, &s.ports) } else { s.ports.clone() });
     let routes = route_all(g, p, ports);
     let segs = lane_segments(g, p, ports, &routes);
     let greedy = assign_tracks(&segs);
@@ -102,7 +114,7 @@ pub fn layout(input: &InputGraph, hints: &Hints, opts: &Options) -> Result<Layou
     let min_s = min_side(&g, sizes);
     let finish = |st: &State| {
         let st = &align_start(&g, st);
-        let mut r = build(&g, st, sizes, min_s);
+        let mut r = build_final(&g, st, sizes, min_s);
         r.metrics.ignored_hints = hints::ignored(&g.placement, &st.placement);
         r
     };

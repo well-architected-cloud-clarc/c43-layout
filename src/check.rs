@@ -249,7 +249,7 @@ pub fn check(l: &Layout) -> Metrics {
             if a < EPS || a > len - EPS {
                 rule(&mut v, "corner-port", format!("{} on {}", e.id, id));
             }
-            sides.entry(format!("{}|{}", id, side_name(port.side))).or_default().push((a, len, port.snapped));
+            sides.entry(format!("{}|{}", id, side_name(port.side))).or_default().push((a, len, port.align.is_some()));
         }
         if e.src.side == Side::Left && !e.src.inner {
             rule(&mut v, "left-exit", e.id.to_string());

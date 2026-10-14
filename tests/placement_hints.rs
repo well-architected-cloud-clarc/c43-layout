@@ -291,7 +291,7 @@ fn a_connection_between_same_row_nodes_runs_straight_when_a_port_may_move() {
     assert_eq!(col_row(&r, "a").1, col_row(&r, "b").1);
     assert_eq!(ab.points.len(), 2, "straight: {:?}", ab.points);
     assert_eq!(ab.points[0].y, ab.points[1].y);
-    assert!(ab.src.snapped || ab.dst.snapped);
+    assert!(ab.src.align.is_some() || ab.dst.align.is_some());
     // the even-spread rule holds for every port that did not move
     assert!(r.metrics.violations.iter().all(|v| v.rule != "uneven-ports"), "{:?}", r.metrics.violations);
 }
@@ -310,5 +310,5 @@ fn grouped_layouts_keep_their_ports_evenly_spread() {
     let g = json!({"groups":[{"id":"G"}],"nodes":[{"id":"a","group":"G"},{"id":"b","group":"G"},{"id":"c"},{"id":"d"},{"id":"e"}],
                    "edges":[{"from":"a","to":"b"},{"from":"a","to":"c"},{"from":"a","to":"d"},{"from":"e","to":"b"}]});
     let r = layout(&graph(g), &hints(json!({})), &Default::default()).unwrap();
-    assert!(r.layout.edges.iter().all(|e| !e.src.snapped && !e.dst.snapped));
+    assert!(r.layout.edges.iter().all(|e| e.src.align.is_none() && e.dst.align.is_none()));
 }
