@@ -237,3 +237,43 @@ fn gravity_puts_an_nf_only_node_next_to_its_source_member_of_a_group() {
     assert_eq!(closer, 0, "a closer free cell exists for n at {n:?} (q at {q:?})");
     assert!(on.metrics.ignored_hints.is_empty());
 }
+
+// two sources feeding a long chain: s feeds the chain's head, x only its last node
+fn pull_graph() -> serde_json::Value {
+    json!({"nodes":[{"id":"s"},{"id":"a"},{"id":"b"},{"id":"c"},{"id":"x"},{"id":"lone"}],
+           "edges":[{"from":"s","to":"a"},{"from":"a","to":"b"},{"from":"b","to":"c"},{"from":"x","to":"c"}]})
+}
+
+fn pulled(h: serde_json::Value) -> LayoutResult {
+    layout(&graph(pull_graph()), &hints(h), &Default::default()).unwrap()
+}
+
+#[test]
+fn sources_sit_in_the_first_column_unless_pulled() {
+    let r = pulled(json!({}));
+    assert_eq!(col_row(&r, "x").0, 0);
+    assert_eq!(col_row(&r, "s").0, 0);
+}
+
+#[test]
+fn pull_sources_puts_a_source_just_before_its_nearest_target() {
+    let r = pulled(json!({"pull_sources": true}));
+    // x feeds c, which is three columns in: x sits right before it
+    assert_eq!(col_row(&r, "x").0 + 1, col_row(&r, "c").0);
+    // s feeds a, one column in: nothing to pull
+    assert_eq!(col_row(&r, "s").0, 0);
+}
+
+#[test]
+fn a_leftmost_source_is_not_pulled() {
+    let r = pulled(json!({"pull_sources": true, "placement": [{"rel":"leftmost","a":"x"}]}));
+    assert_eq!(col_row(&r, "x").0, 0);
+}
+
+#[test]
+fn a_node_without_data_edges_stays_in_the_bottom_band_when_sources_are_pulled() {
+    let r = pulled(json!({"pull_sources": true}));
+    let bottom = r.layout.nodes.iter().map(|n| n.row).max().unwrap();
+    assert_eq!(col_row(&r, "lone").1, bottom);
+    assert!(r.layout.nodes.iter().filter(|n| n.id != "lone").all(|n| n.row < bottom));
+}

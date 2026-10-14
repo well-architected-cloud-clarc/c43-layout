@@ -133,6 +133,10 @@ pub struct Hints {
     /// connected nodes gravitate: a node with only nf edges sits next to its source instead of in the bottom band
     #[serde(default)]
     pub gravity: bool,
+    /// a source (a node nothing points at) that is not declared leftmost sits just before its nearest target
+    /// instead of in the first column; nodes without any data edge stay in the bottom band either way
+    #[serde(default)]
+    pub pull_sources: bool,
 }
 
 // ---- internal input (node kinds given), the router's InputGraph ----
@@ -173,6 +177,8 @@ pub struct RawGraph {
     pub placement: Vec<PlacementHint>,
     #[serde(default)]
     pub gravity: bool,
+    #[serde(default)]
+    pub pull_sources: bool,
 }
 
 // ---- normalized graph ----
@@ -219,6 +225,8 @@ pub struct Graph {
     pub placement: Vec<PlacementHint>,
     /// see `Hints::gravity`
     pub gravity: bool,
+    /// see `Hints::pull_sources`
+    pub pull_sources: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

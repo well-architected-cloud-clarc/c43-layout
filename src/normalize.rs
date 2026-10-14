@@ -114,6 +114,7 @@ pub fn normalize_internal(input: &RawGraph) -> Result<Graph, String> {
         degree,
         placement: input.placement.clone(),
         gravity: input.gravity,
+        pull_sources: input.pull_sources,
     })
 }
 
@@ -166,6 +167,7 @@ pub fn normalize(input: &InputGraph, hints: &Hints) -> Result<Graph, String> {
         edges,
         placement: hints.placement.clone(),
         gravity: hints.gravity,
+        pull_sources: hints.pull_sources,
     };
     normalize_internal(&raw)
 }

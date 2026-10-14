@@ -127,6 +127,20 @@ pub fn skeleton(g: &Graph) -> Skeleton {
         }
     }
 
+    // pull_sources: a source not declared leftmost sits just before its nearest target, not in the first column
+    if g.pull_sources {
+        let leftmost: IndexSet<&str> = g.placement.iter().filter(|h| h.rel == Rel::Leftmost).map(|h| h.a.as_str()).collect();
+        let pulled: Vec<(String, i32)> = ids
+            .iter()
+            .filter(|id| preds[*id].is_empty() && !leftmost.contains(id.as_str()))
+            .filter(|id| !g.edges.iter().any(|e| e.kind == Kind::Nf && e.to == **id))
+            .filter_map(|id| fwd(id).iter().map(|w| layer[w]).min().map(|nearest| (id.clone(), (nearest - 1).max(0))))
+            .collect();
+        pulled.into_iter().for_each(|(id, l)| {
+            layer.insert(id, l);
+        });
+    }
+
     // same-col hints: pull the second node into the first one's layer when its edges allow
     for h in crate::hints::priority_last(g).into_iter().filter(|h| h.rel == Rel::SameCol) {
         let Some(b) = &h.b else { continue };

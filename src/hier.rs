@@ -92,7 +92,7 @@ fn macro_graph(g: &Graph, level: &str, kids: &[String]) -> RawGraph {
             RawNode { id, label: None, kind: Some(kind), group: None }
         })
         .collect();
-    RawGraph { title: None, description: None, groups: vec![], nodes, edges, placement: lifted_hints(g, level, kids), gravity: g.gravity }
+    RawGraph { title: None, description: None, groups: vec![], nodes, edges, placement: lifted_hints(g, level, kids), gravity: g.gravity, pull_sources: g.pull_sources }
 }
 
 /// lay out the level's children by the diagram rules, then expand macro cells into cell spans
