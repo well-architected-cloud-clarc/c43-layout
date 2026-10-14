@@ -277,3 +277,38 @@ fn a_node_without_data_edges_stays_in_the_bottom_band_when_sources_are_pulled() 
     assert_eq!(col_row(&r, "lone").1, bottom);
     assert!(r.layout.nodes.iter().filter(|n| n.id != "lone").all(|n| n.row < bottom));
 }
+
+// a feeds b, c and d (3 exits: heights 1/6, 1/2, 5/6); b is also fed by e (2 entries: 1/4, 3/4): a→b cannot be straight on even slots
+fn snap_graph() -> serde_json::Value {
+    json!({"nodes":[{"id":"a"},{"id":"b"},{"id":"c"},{"id":"d"},{"id":"e"}],
+           "edges":[{"from":"a","to":"b"},{"from":"a","to":"c"},{"from":"a","to":"d"},{"from":"e","to":"b"}]})
+}
+
+#[test]
+fn a_connection_between_same_row_nodes_runs_straight_when_a_port_may_move() {
+    let r = layout(&graph(snap_graph()), &hints(json!({"placement": [{"rel":"same-row","a":"a","b":"b"}]})), &Default::default()).unwrap();
+    let ab = r.layout.edges.iter().find(|e| e.from == "a" && e.to == "b").unwrap();
+    assert_eq!(col_row(&r, "a").1, col_row(&r, "b").1);
+    assert_eq!(ab.points.len(), 2, "straight: {:?}", ab.points);
+    assert_eq!(ab.points[0].y, ab.points[1].y);
+    assert!(ab.src.snapped || ab.dst.snapped);
+    // the even-spread rule holds for every port that did not move
+    assert!(r.metrics.violations.iter().all(|v| v.rule != "uneven-ports"), "{:?}", r.metrics.violations);
+}
+
+#[test]
+fn ports_stay_ordered_and_apart_when_one_snaps() {
+    let r = layout(&graph(snap_graph()), &hints(json!({"placement": [{"rel":"same-row","a":"a","b":"b"}]})), &Default::default()).unwrap();
+    let mut on_b: Vec<f64> = r.layout.edges.iter().filter(|e| e.to == "b").map(|e| e.dst.y).collect();
+    on_b.sort_by(|p, q| p.partial_cmp(q).unwrap());
+    assert!(on_b.windows(2).all(|w| w[1] - w[0] > 0.2), "{on_b:?}");
+    assert!(r.metrics.violations.iter().all(|v| v.rule == "crossing"), "{:?}", r.metrics.violations);
+}
+
+#[test]
+fn grouped_layouts_keep_their_ports_evenly_spread() {
+    let g = json!({"groups":[{"id":"G"}],"nodes":[{"id":"a","group":"G"},{"id":"b","group":"G"},{"id":"c"},{"id":"d"},{"id":"e"}],
+                   "edges":[{"from":"a","to":"b"},{"from":"a","to":"c"},{"from":"a","to":"d"},{"from":"e","to":"b"}]});
+    let r = layout(&graph(g), &hints(json!({})), &Default::default()).unwrap();
+    assert!(r.layout.edges.iter().all(|e| !e.src.snapped && !e.dst.snapped));
+}

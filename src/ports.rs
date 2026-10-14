@@ -1,4 +1,4 @@
-use crate::geom::{box_of, EndInfo};
+use crate::geom::{box_of, cell_key, slot_offset, EndInfo};
 use crate::groups::is_inner;
 use crate::model::{Box as GBox, End, Graph, Kind, Placement, PortRef, Ports, Side, SidePorts, SIDES};
 use indexmap::IndexSet;
@@ -55,8 +55,8 @@ pub fn assign_ports(g: &Graph, p: &Placement) -> Ports {
         // a group pointing at its own member starts inside its left border, flowing right
         let inner = is_inner(g, &e.from, &e.to);
         let (ss, ts) = if inner { (Side::Left, Side::Left) } else { choose_sides(e.kind, &box_of(p, &e.from), &box_of(p, &e.to)) };
-        ports.get_mut(&e.from).unwrap().get_mut(ss).push(PortRef { edge: e.id, end: End::Src, inner });
-        ports.get_mut(&e.to).unwrap().get_mut(ts).push(PortRef { edge: e.id, end: End::Dst, inner: false });
+        ports.get_mut(&e.from).unwrap().get_mut(ss).push(PortRef { edge: e.id, end: End::Src, inner, align: None });
+        ports.get_mut(&e.to).unwrap().get_mut(ts).push(PortRef { edge: e.id, end: End::Dst, inner: false, align: None });
     }
     // 4+ data outs on the right: keep 3 there; the overflow peels off whichever end of the clockwise
     // order lies farther from the node's row (tie: the lower end) — targets below leave from the bottom,
@@ -89,7 +89,7 @@ pub fn end_info(ports: &Ports, node: &str, edge: usize, end: End) -> EndInfo {
     for side in SIDES {
         let list = s.get(side);
         if let Some(index) = list.iter().position(|r| r.edge == edge && r.end == end) {
-            return EndInfo { side, index, count: list.len(), inner: list[index].inner };
+            return EndInfo { side, index, count: list.len(), inner: list[index].inner, align: list[index].align };
         }
     }
     panic!("no port for edge {edge} ({end:?}) on {node}");
@@ -102,4 +102,52 @@ pub fn side_count(ports: &Ports, skip: Option<&IndexSet<String>>) -> usize {
         .filter(|(id, _)| !skip.is_some_and(|s| s.contains(*id)))
         .flat_map(|(_, s)| SIDES.map(|side| s.get(side).len()))
         .fold(1, usize::max)
+}
+
+/// current position of a port on its side, as a fraction of the side's length
+fn slot_fraction(list: &[PortRef], i: usize) -> f64 {
+    let (a, n) = list[i].align.unwrap_or((i, list.len()));
+    slot_offset(1.0, a, n)
+}
+
+/// a port may take another position along its side only between its neighbours, half a slot away from each
+fn fits_at(list: &[PortRef], i: usize, at: f64) -> bool {
+    let gap = 0.5 / list.len() as f64;
+    let before = i.checked_sub(1).map_or(0.0, |j| slot_fraction(list, j));
+    let after = list.get(i + 1).map_or(1.0, |_| slot_fraction(list, i + 1));
+    let (lo, hi) = (if i == 0 { 0.0 } else { before + gap }, if i + 1 == list.len() { 1.0 } else { after - gap });
+    lo <= at && at <= hi && 0.0 < at && at < 1.0
+}
+
+/**
+ * A connection between two nodes in one row with nothing in between would run straight, but only when its
+ * ports are at the same height; evenly spread slots of sides with different port counts rarely are, which
+ * costs a detour around the row. Such a connection moves one of its ports along its side to the other
+ * port's height, when that keeps the order and half a slot to the neighbours. The other ports stay put.
+ * The even spread is the rule for every port that was not moved this way.
+ */
+pub fn snap_ports(g: &Graph, p: &Placement, ports: &Ports) -> Ports {
+    let mut ports = ports.clone();
+    let taken: IndexSet<String> = p.cells.values().map(cell_key).collect();
+    for e in &g.edges {
+        let (Some(sc), Some(tc)) = (p.cells.get(&e.from), p.cells.get(&e.to)) else { continue };
+        let free = sc.row == tc.row && tc.col > sc.col && !(sc.col + 1..tc.col).any(|c| taken.contains(&cell_key(&crate::model::Cell { col: c, row: sc.row })));
+        let at = |side: &[PortRef], end: End| side.iter().position(|r| r.edge == e.id && r.end == end);
+        let (Some(i), Some(j)) = (at(&ports[&e.from].right, End::Src), at(&ports[&e.to].left, End::Dst)) else { continue };
+        if !free || ports[&e.from].right[i].inner {
+            continue;
+        }
+        let (src, dst) = (slot_fraction(&ports[&e.from].right, i), slot_fraction(&ports[&e.to].left, j));
+        if (src - dst).abs() < 1e-12 {
+            continue;
+        }
+        if fits_at(&ports[&e.to].left, j, src) {
+            let a = ports[&e.from].right[i].align.unwrap_or((i, ports[&e.from].right.len()));
+            ports.get_mut(&e.to).unwrap().left[j].align = Some(a);
+        } else if fits_at(&ports[&e.from].right, i, dst) {
+            let a = ports[&e.to].left[j].align.unwrap_or((j, ports[&e.to].left.len()));
+            ports.get_mut(&e.from).unwrap().right[i].align = Some(a);
+        }
+    }
+    ports
 }

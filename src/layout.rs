@@ -181,8 +181,8 @@ pub fn build_layout(g: &Graph, p: &Placement, ports: &Ports, routes: &[Route], t
                     to: e.to.clone(),
                     kind: e.kind,
                     label: e.label.clone(),
-                    src: PortOut { side: si.side, index: si.index, count: si.count, inner: si.inner, x: a.x, y: a.y },
-                    dst: PortOut { side: ti.side, index: ti.index, count: ti.count, inner: ti.inner, x: b.x, y: b.y },
+                    src: PortOut { side: si.side, index: si.index, count: si.count, inner: si.inner, snapped: si.align.is_some(), x: a.x, y: a.y },
+                    dst: PortOut { side: ti.side, index: ti.index, count: ti.count, inner: ti.inner, snapped: ti.align.is_some(), x: b.x, y: b.y },
                     points,
                 }
             })

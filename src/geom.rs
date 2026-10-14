@@ -38,9 +38,20 @@ pub fn slot_offset(s: f64, index: usize, count: usize) -> f64 {
     (s * (2 * index + 1) as f64) / (2 * count) as f64
 }
 
+/// the slot a port sits in: its own, or the facing one it is aligned with
+fn slot_of(s: f64, index: usize, count: usize, align: Option<(usize, usize)>) -> f64 {
+    let (i, n) = align.unwrap_or((index, count));
+    slot_offset(s, i, n)
+}
+
 pub fn port_point(g: &Geom, c: &Cell, side: Side, index: usize, count: usize) -> Pt {
+    port_point_aligned(g, c, side, index, count, None)
+}
+
+/// as `port_point`; `align` = the facing slot (index, count) the port takes its height from
+pub fn port_point_aligned(g: &Geom, c: &Cell, side: Side, index: usize, count: usize, align: Option<(usize, usize)>) -> Pt {
     let o = node_origin(g, c);
-    let a = slot_offset(g.s, index, count);
+    let a = slot_of(g.s, index, count, align);
     match side {
         Side::Right => Pt { x: o.x + g.s, y: o.y + a },
         Side::Left => Pt { x: o.x, y: o.y + a },
@@ -94,23 +105,28 @@ pub struct EndInfo {
     pub index: usize,
     pub count: usize,
     pub inner: bool,
+    pub align: Option<(usize, usize)>,
 }
 
 /// a port's point: on a node's side, or on a group's border (`rect_of`: the group's drawn rectangle, default abstract)
 pub fn end_point(g: &Geom, p: &Placement, id: &str, info: &EndInfo, rect_of: Option<&dyn Fn(&str) -> Rect>) -> Pt {
     if let Some(c) = p.cells.get(id) {
-        return port_point(g, c, info.side, info.index, info.count);
+        return port_point_aligned(g, c, info.side, info.index, info.count, info.align);
     }
     let r = match rect_of {
         Some(f) => f(id),
         None => box_rect(g, &p.groups.as_ref().unwrap()[id]),
     };
-    rect_port_point(&r, info.side, info.index, info.count)
+    rect_port_point_aligned(&r, info.side, info.index, info.count, info.align)
 }
 
 /// slot on a rectangle side, spread like node ports
 pub fn rect_port_point(r: &Rect, side: Side, index: usize, count: usize) -> Pt {
-    let a = slot_offset(if matches!(side, Side::Left | Side::Right) { r.h } else { r.w }, index, count);
+    rect_port_point_aligned(r, side, index, count, None)
+}
+
+pub fn rect_port_point_aligned(r: &Rect, side: Side, index: usize, count: usize, align: Option<(usize, usize)>) -> Pt {
+    let a = slot_of(if matches!(side, Side::Left | Side::Right) { r.h } else { r.w }, index, count, align);
     match side {
         Side::Right => Pt { x: r.x + r.w, y: r.y + a },
         Side::Left => Pt { x: r.x, y: r.y + a },

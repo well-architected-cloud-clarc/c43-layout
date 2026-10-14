@@ -9,7 +9,7 @@ A good storytelling diagram (in order of priority):
 - Nodes are evenly spaced. In a 5x4 layout all cells containing nodes are same size and nodes are in the center of each
 - Two connections never share an exit or entry port
 - Connections leave from right (preferred for data) or bottom (preferred for non-functional) (exceptionally top and never left) side (it reads left-to-right) and enter on the edge closest to the source, never on the right
-- Connection ports are evenly distributed on their edge
+- Connection ports are evenly distributed on their edge. Exception: in a diagram without groups a connection between two nodes of one row with nothing in between may move one of its ports along its side to the other port's height (keeping the order and half a slot to its neighbours), so that it runs straight instead of detouring around the row; the other ports stay on their even slots
 - Connections never leave or enter on corners
 - Connections do not cross, unless otherwise impossible
 - Two parallel connections' segments never overlap

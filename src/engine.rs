@@ -6,7 +6,7 @@ use crate::layout::{build_layout, edge_polyline, frame_for, lane_keys};
 use crate::model::{Cell, Edge, Graph, Hints, InputGraph, Kind, LayoutResult, Placement, Rel, SizeHints, State};
 use crate::normalize::normalize;
 use crate::place::{compact, place};
-use crate::ports::{assign_ports, side_count};
+use crate::ports::{assign_ports, side_count, snap_ports};
 use crate::repair::{repair, RepairOptions};
 use crate::route::route_all;
 use crate::skeleton::skeleton;
@@ -37,16 +37,17 @@ pub fn min_side(g: &Graph, sizes: &SizeHints) -> f64 {
 /// state → routes → tracks → geometry → metrics; `min_s` = node side the labels need
 pub fn build(g: &Graph, s: &State, sizes: &SizeHints, min_s: f64) -> LayoutResult {
     let p = &s.placement;
-    let routes = route_all(g, p, &s.ports);
-    let segs = lane_segments(g, p, &s.ports, &routes);
+    let ports = &(if g.snap_ports { snap_ports(g, p, &s.ports) } else { s.ports.clone() });
+    let routes = route_all(g, p, ports);
+    let segs = lane_segments(g, p, ports, &routes);
     let greedy = assign_tracks(&segs);
     // while tracks are being improved every band may use the greedy range
-    let side = min_s.max(side_count(&s.ports, Some(&g.group_ids)) as f64);
+    let side = min_s.max(side_count(ports, Some(&g.group_ids)) as f64);
     let k = greedy.values().map(|t| t.abs()).fold(0, i32::max);
     let f = frame_for(g, p, side, lane_plan(side, &borders(g, p), Box::new(move |_, _| k), title_slots(sizes), sizes.title_bottom, &lane_keys(p)), &segs);
     let edges: Vec<usize> = g.edges.iter().map(|e| e.id).collect();
-    let tracks = improve_tracks(&segs, &greedy, &|edge, t| edge_polyline(g, p, &s.ports, &f, &routes[edge], t), &edges);
-    let layout = build_layout(g, p, &s.ports, &routes, &tracks, sizes, min_s, &segs);
+    let tracks = improve_tracks(&segs, &greedy, &|edge, t| edge_polyline(g, p, ports, &f, &routes[edge], t), &edges);
+    let layout = build_layout(g, p, ports, &routes, &tracks, sizes, min_s, &segs);
     let metrics = check(&layout);
     LayoutResult { version: 1, layout, metrics }
 }

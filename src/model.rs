@@ -179,6 +179,8 @@ pub struct RawGraph {
     pub gravity: bool,
     #[serde(default)]
     pub pull_sources: bool,
+    #[serde(default)]
+    pub snap_ports: bool,
 }
 
 // ---- normalized graph ----
@@ -227,6 +229,9 @@ pub struct Graph {
     pub gravity: bool,
     /// see `Hints::pull_sources`
     pub pull_sources: bool,
+    /// ports of straight connections between nodes of one row may move to face each other (`ports::snap_ports`);
+    /// only for diagrams without groups: a group border port and a member's port would then be collinear
+    pub snap_ports: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -266,6 +271,8 @@ pub struct PortRef {
     pub edge: usize,
     pub end: End,
     pub inner: bool,
+    /// (index, count) of the facing slot this port takes its height from, so that the edge runs straight (see `ports::snap_ports`)
+    pub align: Option<(usize, usize)>,
 }
 
 /// per side, ordered: top→bottom on left/right, left→right on top/bottom
@@ -351,6 +358,9 @@ pub struct PortOut {
     pub count: usize,
     #[serde(skip_serializing_if = "is_false")]
     pub inner: bool,
+    /// moved along its side to face the other end of a straight connection (exempt from even spacing)
+    #[serde(skip_serializing_if = "is_false")]
+    pub snapped: bool,
     pub x: f64,
     pub y: f64,
 }

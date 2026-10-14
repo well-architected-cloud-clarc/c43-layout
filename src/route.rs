@@ -1,4 +1,4 @@
-use crate::geom::{attach_lane_box, box_of, cell_key, end_point, lane_center, lane_key, port_point, EndInfo, Geom};
+use crate::geom::{attach_lane_box, box_of, cell_key, end_point, lane_center, lane_key, port_point_aligned, EndInfo, Geom};
 use crate::groups::{chain, owner};
 use crate::model::{Box as GBox, Cell, Dir, End, Graph, Kind, Lane, Placement, Ports, Pt, Route, Side};
 use crate::ports::{end_info, side_count};
@@ -81,7 +81,7 @@ fn obstacles(g: &Graph, p: &Placement, ports: &Ports, geo: &Geom, others: &[Rout
         // straight shots only join two nodes
         let (Some(sc), Some(tc)) = (p.cells.get(&e.from), p.cells.get(&e.to)) else { continue };
         let si = end_info(ports, &e.from, e.id, End::Src);
-        let sp = port_point(geo, sc, si.side, si.index, si.count);
+        let sp = port_point_aligned(geo, sc, si.side, si.index, si.count, si.align);
         if sc.row == tc.row {
             (sc.col + 1..=tc.col).for_each(|i| cross(Lane { dir: Dir::V, i }, sp.y));
         } else {

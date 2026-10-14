@@ -233,7 +233,7 @@ pub fn check(l: &Layout) -> Metrics {
     let boxes: IndexMap<&str, Rect> =
         l.nodes.iter().map(|n| (n.id.as_str(), node_rect(n))).chain(l.groups.iter().map(|g| (g.id.as_str(), g.rect()))).collect();
     let mut seen: IndexMap<String, usize> = IndexMap::new();
-    let mut sides: IndexMap<String, Vec<(f64, f64)>> = IndexMap::new();
+    let mut sides: IndexMap<String, Vec<(f64, f64, bool)>> = IndexMap::new();
     for e in &l.edges {
         for (port, id) in [(&e.src, &e.from), (&e.dst, &e.to)] {
             let b = boxes[id.as_str()];
@@ -249,7 +249,7 @@ pub fn check(l: &Layout) -> Metrics {
             if a < EPS || a > len - EPS {
                 rule(&mut v, "corner-port", format!("{} on {}", e.id, id));
             }
-            sides.entry(format!("{}|{}", id, side_name(port.side))).or_default().push((a, len));
+            sides.entry(format!("{}|{}", id, side_name(port.side))).or_default().push((a, len, port.snapped));
         }
         if e.src.side == Side::Left && !e.src.inner {
             rule(&mut v, "left-exit", e.id.to_string());
@@ -271,7 +271,8 @@ pub fn check(l: &Layout) -> Metrics {
     for (k, list) in sides.iter_mut() {
         list.sort_by(|p, q| p.0.partial_cmp(&q.0).unwrap());
         let n = list.len();
-        if list.iter().enumerate().any(|(i, (a, len))| (a - slot_offset(*len, i, n)).abs() > EPS) {
+        // a port moved to face its straight connection is exempt; the others keep their even slots
+        if list.iter().enumerate().any(|(i, (a, len, snapped))| !snapped && (a - slot_offset(*len, i, n)).abs() > EPS) {
             rule(&mut v, "uneven-ports", k.clone());
         }
     }
