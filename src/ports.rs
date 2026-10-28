@@ -122,9 +122,10 @@ fn fits_at(list: &[PortRef], i: usize, at: f64) -> bool {
 /**
  * A connection between two nodes in one row with nothing in between would run straight, but only when its
  * ports are at the same height; evenly spread slots of sides with different port counts rarely are, which
- * costs a detour around the row. Such a connection moves one of its ports along its side to the other
- * port's height, when that keeps the order and half a slot to the neighbours. The other ports stay put.
- * The even spread is the rule for every port that was not moved this way.
+ * costs a detour around the row. Such a connection moves its port along its side to the other port's
+ * height, but only a port that is alone on its side: moving one of several would break the even spread
+ * of its neighbours. The other ports stay put. The even spread is the rule for every port that was not
+ * moved this way.
  */
 pub fn snap_ports(g: &Graph, p: &Placement, ports: &Ports) -> Ports {
     let mut ports = ports.clone();
@@ -141,10 +142,11 @@ pub fn snap_ports(g: &Graph, p: &Placement, ports: &Ports) -> Ports {
         if (src - dst).abs() < 1e-12 {
             continue;
         }
-        if fits_at(&ports[&e.to].left, j, src) {
+        let (src_alone, dst_alone) = (ports[&e.from].right.len() == 1, ports[&e.to].left.len() == 1);
+        if dst_alone && fits_at(&ports[&e.to].left, j, src) {
             let a = ports[&e.from].right[i].align.unwrap_or((i, ports[&e.from].right.len()));
             ports.get_mut(&e.to).unwrap().left[j].align = Some(a);
-        } else if fits_at(&ports[&e.from].right, i, dst) {
+        } else if src_alone && fits_at(&ports[&e.from].right, i, dst) {
             let a = ports[&e.to].left[j].align.unwrap_or((j, ports[&e.to].left.len()));
             ports.get_mut(&e.from).unwrap().right[i].align = Some(a);
         }
