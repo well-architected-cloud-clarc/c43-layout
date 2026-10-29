@@ -46,7 +46,7 @@ fn aws_ports() {
     assert_eq!(ids(&g, &ports, "CF", Side::Bottom), ["CF>R53"]);
     assert_eq!(side_count(&ports, None), 3);
     let agw_lb = g.edges.iter().find(|e| e.from == "AGW" && e.to == "LB").unwrap().id;
-    assert_eq!(end_info(&ports, "AGW", agw_lb, End::Src), EndInfo { side: Side::Right, index: 1, count: 3, inner: false, align: None });
+    assert_eq!(end_info(&ports, "AGW", agw_lb, End::Src), EndInfo { side: Side::Right, index: 1, count: 3, inner: false, align: None, join: false });
 }
 
 fn ports_for(edges: &[(&str, &str)], cells: &[(&str, (i32, i32))]) -> (Graph, Ports) {

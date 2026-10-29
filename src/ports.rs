@@ -55,8 +55,8 @@ pub fn assign_ports(g: &Graph, p: &Placement) -> Ports {
         // a group pointing at its own member starts inside its left border, flowing right
         let inner = is_inner(g, &e.from, &e.to);
         let (ss, ts) = if inner { (Side::Left, Side::Left) } else { choose_sides(e.kind, &box_of(p, &e.from), &box_of(p, &e.to)) };
-        ports.get_mut(&e.from).unwrap().get_mut(ss).push(PortRef { edge: e.id, end: End::Src, inner, align: None });
-        ports.get_mut(&e.to).unwrap().get_mut(ts).push(PortRef { edge: e.id, end: End::Dst, inner: false, align: None });
+        ports.get_mut(&e.from).unwrap().get_mut(ss).push(PortRef { edge: e.id, end: End::Src, inner, align: None, join: None });
+        ports.get_mut(&e.to).unwrap().get_mut(ts).push(PortRef { edge: e.id, end: End::Dst, inner: false, align: None, join: None });
     }
     // 4+ data outs on the right: keep 3 there; the overflow peels off whichever end of the clockwise
     // order lies farther from the node's row (tie: the lower end) — targets below leave from the bottom,
@@ -84,12 +84,46 @@ pub fn assign_ports(g: &Graph, p: &Placement) -> Ports {
     ports
 }
 
+/// slots a side's ports take: joined neighbours of one tag share one
+pub fn slots(list: &[PortRef]) -> usize {
+    list.iter().enumerate().filter(|(i, r)| !(r.join.is_some() && *i > 0 && list[*i - 1].join == r.join)).count()
+}
+
+/**
+ * Joins the ports of every node side into shared slots as `g.join_ports` asks: per side, the inbound ports
+ * (and the outbound ones) become one slot when they are crowded (more than 2) or when `all` is set and
+ * there are several. The slot sits where the first of its ports was; the edges keep their routes and meet
+ * at the slot's point.
+ */
+pub fn join_ports(g: &Graph, ports: &Ports) -> Ports {
+    let j = g.join_ports;
+    let mut ports = ports.clone();
+    let wants = |end: End, n: usize| n > 1 && (j.all || n > 2 && if end == End::Dst { j.inbound } else { j.outbound });
+    g.nodes.iter().for_each(|n| {
+        SIDES.iter().for_each(|side| {
+            let list = ports.get_mut(&n.id).unwrap().get_mut(*side);
+            [End::Dst, End::Src].iter().enumerate().for_each(|(tag, end)| {
+                let members = list.iter().filter(|r| r.end == *end && !r.inner).count();
+                if !wants(*end, members) {
+                    return;
+                }
+                let first = list.iter().position(|r| r.end == *end && !r.inner).unwrap();
+                let (joined, rest): (Vec<PortRef>, Vec<PortRef>) = list.drain(..).partition(|r| r.end == *end && !r.inner);
+                let at = rest.iter().take(first).count();
+                let run = joined.into_iter().map(|r| PortRef { join: Some(tag as u8), align: None, ..r });
+                *list = rest[..at].iter().copied().chain(run).chain(rest[at..].iter().copied()).collect();
+            });
+        });
+    });
+    ports
+}
+
 pub fn end_info(ports: &Ports, node: &str, edge: usize, end: End) -> EndInfo {
     let s = &ports[node];
     for side in SIDES {
         let list = s.get(side);
         if let Some(index) = list.iter().position(|r| r.edge == edge && r.end == end) {
-            return EndInfo { side, index, count: list.len(), inner: list[index].inner, align: list[index].align };
+            return EndInfo { side, index: slots(&list[..=index]) - 1, count: slots(list), inner: list[index].inner, align: list[index].align, join: list[index].join.is_some() };
         }
     }
     panic!("no port for edge {edge} ({end:?}) on {node}");
@@ -100,7 +134,7 @@ pub fn side_count(ports: &Ports, skip: Option<&IndexSet<String>>) -> usize {
     ports
         .iter()
         .filter(|(id, _)| !skip.is_some_and(|s| s.contains(*id)))
-        .flat_map(|(_, s)| SIDES.map(|side| s.get(side).len()))
+        .flat_map(|(_, s)| SIDES.map(|side| slots(s.get(side))))
         .fold(1, usize::max)
 }
 

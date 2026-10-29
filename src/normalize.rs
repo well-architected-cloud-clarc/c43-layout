@@ -116,6 +116,7 @@ pub fn normalize_internal(input: &RawGraph) -> Result<Graph, String> {
         gravity: input.gravity,
         pull_sources: input.pull_sources,
         snap_ports: input.snap_ports,
+        join_ports: input.join_ports,
     })
 }
 
@@ -170,6 +171,7 @@ pub fn normalize(input: &InputGraph, hints: &Hints) -> Result<Graph, String> {
         gravity: hints.gravity,
         pull_sources: hints.pull_sources,
         snap_ports: input.groups.is_empty(),
+        join_ports: hints.join_ports,
     };
     normalize_internal(&raw)
 }

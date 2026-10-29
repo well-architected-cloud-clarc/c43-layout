@@ -239,6 +239,7 @@ pub fn check(l: &Layout) -> Metrics {
             let b = boxes[id.as_str()];
             let key = format!("{:.6},{:.6}", port.x + 0.0, port.y + 0.0);
             match seen.get(&key) {
+                Some(_) if port.join => {}
                 Some(other) => rule(&mut v, "shared-port", format!("{} & {}", e.id, other)),
                 None => {
                     seen.insert(key, e.id);
@@ -249,7 +250,11 @@ pub fn check(l: &Layout) -> Metrics {
             if a < EPS || a > len - EPS {
                 rule(&mut v, "corner-port", format!("{} on {}", e.id, id));
             }
-            sides.entry(format!("{}|{}", id, side_name(port.side))).or_default().push((a, len, port.align.is_some()));
+            let list = sides.entry(format!("{}|{}", id, side_name(port.side))).or_default();
+            // edges of a joined slot count once
+            if !(port.join && list.iter().any(|(b, _, _)| (a - b).abs() < EPS)) {
+                list.push((a, len, port.align.is_some()));
+            }
         }
         if e.src.side == Side::Left && !e.src.inner {
             rule(&mut v, "left-exit", e.id.to_string());
@@ -279,9 +284,13 @@ pub fn check(l: &Layout) -> Metrics {
 
     group_rules(l, &mut v);
 
+    // edges that meet at a joined port touch there by design
+    let joined_together = |a: &LayoutEdge, b: &LayoutEdge| {
+        [(&a.src, &b.src, &a.from, &b.from), (&a.dst, &b.dst, &a.to, &b.to)].iter().any(|(p, q, x, y)| p.join && q.join && x == y && p.side == q.side)
+    };
     let mut crossings = 0;
     for (i, a) in l.edges.iter().enumerate() {
-        for b in &l.edges[i + 1..] {
+        for b in l.edges[i + 1..].iter().filter(|b| !joined_together(a, b)) {
             let c = pair_crossings(&a.points, &b.points);
             crossings += c;
             for _ in 0..c {

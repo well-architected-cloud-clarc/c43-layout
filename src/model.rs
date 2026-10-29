@@ -137,6 +137,21 @@ pub struct Hints {
     /// instead of in the first column; nodes without any data edge stay in the bottom band either way
     #[serde(default)]
     pub pull_sources: bool,
+    /// ports of a node side that become one (see `JoinPorts`); the default joins nothing
+    #[serde(default)]
+    pub join_ports: JoinPorts,
+}
+
+/// Which ports share one slot, for all nodes. Inbound and outbound ports of a side are counted apart, and
+/// "crowded" means more than 2 of them; `all` joins every direction of every side that has several ports.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JoinPorts {
+    #[serde(default)]
+    pub inbound: bool,
+    #[serde(default)]
+    pub outbound: bool,
+    #[serde(default)]
+    pub all: bool,
 }
 
 // ---- internal input (node kinds given), the router's InputGraph ----
@@ -181,6 +196,8 @@ pub struct RawGraph {
     pub pull_sources: bool,
     #[serde(default)]
     pub snap_ports: bool,
+    #[serde(default)]
+    pub join_ports: JoinPorts,
 }
 
 // ---- normalized graph ----
@@ -232,6 +249,8 @@ pub struct Graph {
     /// ports of straight connections between nodes of one row may move to face each other (`ports::snap_ports`);
     /// only for diagrams without groups: a group border port and a member's port would then be collinear
     pub snap_ports: bool,
+    /// see `Hints::join_ports`; applied to the final state only
+    pub join_ports: JoinPorts,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -273,6 +292,9 @@ pub struct PortRef {
     pub inner: bool,
     /// (index, count) of the facing slot this port takes its height from, so that the edge runs straight (see `ports::snap_ports`)
     pub align: Option<(usize, usize)>,
+    /// edges of one node side and direction that share a single slot: a run of neighbours with the same tag
+    /// (`ports::join_ports`)
+    pub join: Option<u8>,
 }
 
 /// per side, ordered: top→bottom on left/right, left→right on top/bottom
@@ -361,6 +383,9 @@ pub struct PortOut {
     /// moved along its side to the height of this facing slot (index, count), so the connection runs straight (exempt from even spacing)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub align: Option<(usize, usize)>,
+    /// shares its slot with the other edges of its side and direction
+    #[serde(skip_serializing_if = "is_false")]
+    pub join: bool,
     pub x: f64,
     pub y: f64,
 }

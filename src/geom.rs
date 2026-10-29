@@ -106,6 +106,7 @@ pub struct EndInfo {
     pub count: usize,
     pub inner: bool,
     pub align: Option<(usize, usize)>,
+    pub join: bool,
 }
 
 /// a port's point: on a node's side, or on a group's border (`rect_of`: the group's drawn rectangle, default abstract)
