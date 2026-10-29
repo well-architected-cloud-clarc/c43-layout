@@ -6,7 +6,7 @@ use crate::layout::{build_layout, edge_polyline, frame_for, lane_keys};
 use crate::model::{Cell, Edge, Graph, Hints, InputGraph, Kind, LayoutResult, Placement, Rel, SizeHints, State};
 use crate::normalize::normalize;
 use crate::place::{compact, place};
-use crate::ports::{assign_ports, side_count, snap_ports};
+use crate::ports::{assign_ports, join_ports, side_count, snap_ports};
 use crate::repair::{repair, RepairOptions};
 use crate::route::route_all;
 use crate::skeleton::skeleton;
@@ -44,12 +44,13 @@ pub fn build(g: &Graph, s: &State, sizes: &SizeHints, min_s: f64) -> LayoutResul
 /// move to face each other first (`ports::snap_ports`). Not part of the search: it would trade a short bend
 /// for a different slot order that merely saves a crossing by a long detour.
 pub fn build_final(g: &Graph, s: &State, sizes: &SizeHints, min_s: f64) -> LayoutResult {
-    build_with(g, s, sizes, min_s, g.snap_ports)
+    build_with(g, s, sizes, min_s, true)
 }
 
-fn build_with(g: &Graph, s: &State, sizes: &SizeHints, min_s: f64, snap: bool) -> LayoutResult {
+fn build_with(g: &Graph, s: &State, sizes: &SizeHints, min_s: f64, last: bool) -> LayoutResult {
     let p = &s.placement;
-    let ports = &(if snap { snap_ports(g, p, &s.ports) } else { s.ports.clone() });
+    let ports = &(if last && g.snap_ports { snap_ports(g, p, &s.ports) } else { s.ports.clone() });
+    let ports = &(if last { join_ports(g, ports) } else { ports.clone() });
     let routes = route_all(g, p, ports);
     let segs = lane_segments(g, p, ports, &routes);
     let greedy = assign_tracks(&segs);
