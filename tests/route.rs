@@ -67,3 +67,15 @@ fn upward_in_the_same_column_goes_right_across_into_the_left_side() {
     assert_eq!(r[1].dir, Dir::H);
     assert_eq!(r[2], v(0));
 }
+
+/// phase3 compact: the email-preflight edge bg -> content used to leave bg downwards, run left past the whole diagram
+/// (a group-free ring cost no crossings in the router's model) and come back along the bottom
+#[test]
+fn data_edge_never_detours_backwards_round_the_diagram() {
+    let (g, h) = common::load_case("phase3-compact");
+    let r = c43_layout::layout(&g, &h, &Default::default()).unwrap();
+    let e = r.layout.edges.iter().find(|e| e.from == "bg" && e.to == "content").unwrap();
+    let start = e.points[0].x;
+    let worst = e.points.iter().map(|p| start - p.x).fold(f64::MIN, f64::max);
+    assert!(worst <= 1e-9, "edge runs {worst} left of its start: {:?}", e.points);
+}
