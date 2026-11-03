@@ -320,3 +320,70 @@ fn grouped_layouts_keep_their_ports_evenly_spread() {
     let r = layout(&graph(g), &hints(json!({})), &Default::default()).unwrap();
     assert!(r.layout.edges.iter().all(|e| e.src.align.is_none() && e.dst.align.is_none()));
 }
+
+fn run_kinds(g: serde_json::Value, h: serde_json::Value, kinds: serde_json::Value) -> LayoutResult {
+    layout(&graph(g), &hints(json!({"placement": h, "kinds": kinds})), &Default::default()).unwrap()
+}
+
+#[test]
+fn an_edge_less_node_takes_the_column_of_a_same_col_hint_and_sits_below_it() {
+    // d has no edge, so it used to land in column 0 of the bottom band whatever its hints said
+    let g = json!({"nodes":[{"id":"a"},{"id":"b"},{"id":"c"},{"id":"d"}],"edges":[{"from":"a","to":"b"},{"from":"b","to":"c"}]});
+    let r = run(g, json!([{"rel":"same-col","a":"d","b":"b"},{"rel":"below","a":"d","b":"b"}]));
+    assert_eq!(col_row(&r, "d").0, col_row(&r, "b").0);
+    assert!(col_row(&r, "d").1 > col_row(&r, "b").1);
+    assert!(r.metrics.ignored_hints.is_empty(), "{:?}", r.metrics.ignored_hints);
+}
+
+#[test]
+fn an_nf_only_node_with_right_of_and_same_row_sits_next_to_its_peer() {
+    // n is fed by an nf edge only: it used to go straight under its source and ignore right-of
+    let g = json!({"nodes":[{"id":"s"},{"id":"a"},{"id":"x"},{"id":"n"}],"edges":[{"from":"s","to":"a"},{"from":"a","to":"x"},{"from":"a","to":"n"}]});
+    let r = run_kinds(g, json!([{"rel":"right-of","a":"n","b":"a"},{"rel":"same-row","a":"n","b":"a"}]), json!([{"from":"a","to":"n","kind":"nf"}]));
+    assert!(col_row(&r, "n").0 > col_row(&r, "a").0, "{:?} {:?}", col_row(&r, "n"), col_row(&r, "a"));
+    assert_eq!(col_row(&r, "n").1, col_row(&r, "a").1);
+    assert!(r.metrics.ignored_hints.is_empty(), "{:?}", r.metrics.ignored_hints);
+}
+
+#[test]
+fn an_nf_only_node_with_left_of_goes_left_of_its_peer_even_left_of_its_source() {
+    // an nf edge normally puts n at or right of a; the explicit hint wins
+    let g = json!({"nodes":[{"id":"s"},{"id":"a"},{"id":"x"},{"id":"n"}],"edges":[{"from":"s","to":"a"},{"from":"a","to":"x"},{"from":"a","to":"n"}]});
+    let r = run_kinds(g, json!([{"rel":"left-of","a":"n","b":"a"}]), json!([{"from":"a","to":"n","kind":"nf"}]));
+    assert!(col_row(&r, "n").0 < col_row(&r, "a").0, "{:?} {:?}", col_row(&r, "n"), col_row(&r, "a"));
+    assert!(r.metrics.ignored_hints.is_empty(), "{:?}", r.metrics.ignored_hints);
+}
+
+#[test]
+fn a_hint_a_secondary_node_cannot_meet_falls_back_to_its_edge_anchor_and_is_reported() {
+    // n cannot be both right of and left of a
+    let g = json!({"nodes":[{"id":"s"},{"id":"a"},{"id":"x"},{"id":"n"}],"edges":[{"from":"s","to":"a"},{"from":"a","to":"x"},{"from":"a","to":"n"}]});
+    let r = run_kinds(g, json!([{"rel":"right-of","a":"n","b":"a"},{"rel":"left-of","a":"n","b":"a"}]), json!([{"from":"a","to":"n","kind":"nf"}]));
+    assert_eq!(r.metrics.ignored_hints.len(), 1, "{:?}", r.metrics.ignored_hints);
+    assert!(col_row(&r, "n").1 > col_row(&r, "a").1);
+}
+
+#[test]
+fn same_row_lines_up_two_members_of_different_groups() {
+    // G1 and G2 stand side by side and share their height; y sits on one row of G2, the hint puts it on r's row in G1
+    let g = json!({
+        "groups": [{"id":"G1"},{"id":"G2"}],
+        "nodes": [{"id":"s"},{"id":"p","group":"G1"},{"id":"q","group":"G1"},{"id":"r","group":"G1"},{"id":"x","group":"G2"},{"id":"y","group":"G2"}],
+        "edges": [{"from":"s","to":"p"},{"from":"p","to":"q"},{"from":"p","to":"r"},{"from":"q","to":"x"},{"from":"x","to":"y"}]
+    });
+    let base = run(g.clone(), json!([]));
+    assert_ne!(col_row(&base, "y").1, col_row(&base, "r").1, "the test needs y off r's row without the hint");
+    let r = run(g, json!([{"rel":"same-row","a":"y","b":"r"}]));
+    assert_eq!(col_row(&r, "y").1, col_row(&r, "r").1);
+    assert!(r.metrics.ignored_hints.is_empty(), "{:?}", r.metrics.ignored_hints);
+}
+
+#[test]
+fn two_nodes_lined_up_with_the_same_node_both_get_its_row() {
+    // x and y both target g's column; each is hinted onto g's row, so the second one must not push the first away
+    let g = json!({"nodes":[{"id":"s"},{"id":"g"},{"id":"x"},{"id":"y"}],"edges":[{"from":"s","to":"g"},{"from":"g","to":"x"},{"from":"g","to":"y"}]});
+    let r = run(g, json!([{"rel":"same-row","a":"x","b":"g"},{"rel":"same-row","a":"y","b":"g"}]));
+    assert_eq!(col_row(&r, "x").1, col_row(&r, "g").1);
+    assert_eq!(col_row(&r, "y").1, col_row(&r, "g").1);
+    assert!(r.metrics.ignored_hints.is_empty(), "{:?}", r.metrics.ignored_hints);
+}

@@ -85,6 +85,11 @@ fn shift_group(cells: &mut IndexMap<String, Cell>, group: &[String], delta: i32)
     }
 }
 
+/// a same-row hint ties `x` and `y` together, in either direction
+fn aligned(g: &Graph, x: &str, y: &str) -> bool {
+    g.placement.iter().any(|h| h.rel == Rel::SameRow && matches!(&h.b, Some(b) if (h.a == x && b == y) || (h.a == y && b == x)))
+}
+
 /// rows doubled so that a node can be slotted between two others, see `apply_rows`
 pub fn apply_rows(g: &Graph, cells: &mut IndexMap<String, Cell>) {
     cells.values_mut().for_each(|c| c.row *= 2);
@@ -105,10 +110,19 @@ pub fn apply_rows(g: &Graph, cells: &mut IndexMap<String, Cell>) {
                     continue;
                 }
                 if group.len() == 1 {
-                    if let Some(o) = occupant(cells, a.col, b.row, &h.a) {
-                        cells[&o].row = a.row;
+                    match occupant(cells, a.col, b.row, &h.a) {
+                        // the one sitting there is lined up with b too: `a` takes the next free cell of b's row instead of pushing it away
+                        Some(o) if aligned(g, &o, b_id) => {
+                            let col = (a.col + 1..).find(|c| occupant(cells, *c, b.row, &h.a).is_none()).unwrap();
+                            cells[&h.a] = Cell { col, row: b.row };
+                        }
+                        o => {
+                            if let Some(o) = o {
+                                cells[&o].row = a.row;
+                            }
+                            cells[&h.a].row = b.row;
+                        }
                     }
-                    cells[&h.a].row = b.row;
                 } else {
                     shift_group(cells, &group, b.row - a.row);
                 }

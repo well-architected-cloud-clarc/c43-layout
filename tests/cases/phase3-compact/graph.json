@@ -1,22 +1,30 @@
 {
   "title": "Phase 3: serverless Ghost (compact, per function group)",
-  "description": "Same system as phase3, one node per function group: reader-facing (6), render (2), admin (4), background (4). The API also routes the preview function in the render group (edge left out to keep the layout readable). The deploy bucket only holds the code zip the functions are updated from",
+  "description": "Same system as phase3, one node per function group: reader-facing (6), render (2), admin (4), background (4). The API also routes the preview function in the render group (edge left out to keep the layout readable). The deploy bucket (the code zip the functions are updated from) is shown without links: it takes no part at runtime",
   "groups": [
     {
+      "id": "aws",
+      "label": "AWS"
+    },
+    {
       "id": "g_readers",
-      "label": "6 reader-facing functions"
+      "label": "6 reader-facing functions",
+      "group": "aws"
     },
     {
       "id": "g_admin",
-      "label": "4 admin functions"
+      "label": "4 admin functions",
+      "group": "aws"
     },
     {
       "id": "g_gen",
-      "label": "2 render functions"
+      "label": "2 render functions",
+      "group": "aws"
     },
     {
       "id": "g_bg",
-      "label": "4 background functions"
+      "label": "4 background functions",
+      "group": "aws"
     }
   ],
   "nodes": [
@@ -26,15 +34,18 @@
     },
     {
       "id": "cdn",
-      "label": "CloudFront (path behaviors, index function, anonymous member check, 404 page)"
+      "label": "CloudFront (path behaviors, index function, anonymous member check, 404 page)",
+      "group": "aws"
     },
     {
       "id": "content",
-      "label": "Content bucket (HTML, images, admin client)"
+      "label": "Content bucket (HTML, images, admin client)",
+      "group": "aws"
     },
     {
       "id": "apigw",
-      "label": "API Gateway HTTP API (routes, throttling)"
+      "label": "API Gateway HTTP API (routes, throttling)",
+      "group": "aws"
     },
     {
       "id": "readers",
@@ -58,11 +69,13 @@
     },
     {
       "id": "events",
-      "label": "EventBridge Scheduler (recurring + one-shot)"
+      "label": "EventBridge Scheduler (recurring + one-shot)",
+      "group": "aws"
     },
     {
       "id": "data",
-      "label": "SQLite store bucket"
+      "label": "SQLite store bucket",
+      "group": "aws"
     },
     {
       "id": "smtp",
@@ -70,27 +83,37 @@
     },
     {
       "id": "ssm",
-      "label": "Parameter Store (secrets)"
+      "label": "Parameter Store (secrets)",
+      "group": "aws"
     },
     {
       "id": "cw",
-      "label": "CloudWatch (access logs, alarms)"
+      "label": "CloudWatch (access logs, alarms)",
+      "group": "aws"
     },
     {
       "id": "queue",
-      "label": "Generate queue (+ dead-letter)"
+      "label": "Generate queue (+ dead-letter)",
+      "group": "aws"
     },
     {
       "id": "dlq",
-      "label": "Dead-letter queue"
+      "label": "Dead-letter queue",
+      "group": "aws"
     },
     {
       "id": "sns",
-      "label": "Alarm topic (email)"
+      "label": "Alarm topic (email)",
+      "group": "aws"
     },
     {
       "id": "deploy",
-      "label": "Deploy bucket (code zip)"
+      "label": "Deploy bucket (code zip)",
+      "group": "aws"
+    },
+    {
+      "id": "mailgun",
+      "label": "Mailgun (newsletter delivery, credentials in the store settings)"
     }
   ],
   "edges": [
@@ -146,8 +169,8 @@
     },
     {
       "from": "bg",
-      "to": "smtp",
-      "label": "SMTP"
+      "to": "mailgun",
+      "label": "newsletter send (HTTPS API)"
     },
     {
       "from": "readers",
@@ -240,22 +263,6 @@
       "from": "admin",
       "to": "ssm",
       "label": "SMTP credential"
-    },
-    {
-      "from": "deploy",
-      "to": "readers"
-    },
-    {
-      "from": "deploy",
-      "to": "admin"
-    },
-    {
-      "from": "deploy",
-      "to": "gen"
-    },
-    {
-      "from": "deploy",
-      "to": "bg"
     }
   ]
 }

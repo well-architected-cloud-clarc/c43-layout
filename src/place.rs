@@ -1,7 +1,7 @@
 use crate::geom::cell_key;
-use crate::hints::apply_rows;
+use crate::hints::{self, apply_rows};
 use crate::js;
-use crate::model::{Cell, Graph, Kind, Placement};
+use crate::model::{Cell, Graph, Kind, Placement, Rel};
 use crate::skeleton::Skeleton;
 use indexmap::{IndexMap, IndexSet};
 
@@ -53,17 +53,69 @@ fn anchor_of(g: &Graph, cells: &IndexMap<String, Cell>, id: &str) -> Option<(Cel
     g.edges.iter().find(|e| e.from == id && cells.contains_key(&e.to)).map(|out| (cells[&out.to], true))
 }
 
-/// nodes without data edges go to the bottom band, as close to their anchor column as possible
+/// what the hints of a node without data edges ask of its cell, given the nodes already placed:
+/// a column range and the first row to look at; hints that contradict an earlier one are skipped
+struct Wish {
+    min_col: i32,
+    max_col: i32,
+    row: Option<i32>,
+    /// first row under a below hint; only used together with a column hint, a lone below is left to `apply_rows`
+    below: Option<i32>,
+    /// a column hint was taken
+    cols: bool,
+    any: bool,
+}
+
+fn wish_of(g: &Graph, cells: &IndexMap<String, Cell>, id: &str) -> Wish {
+    let hinted = hints::priority_last(g).into_iter().filter_map(|h| {
+        let b = h.b.as_ref()?;
+        // the peer is the placed end; a hint pointing at the node reads the other way round
+        let (peer, rel) = match (h.a == id, b == id) {
+            (true, _) => (b, h.rel),
+            (_, true) => (&h.a, match h.rel {
+                Rel::LeftOf => Rel::RightOf,
+                Rel::RightOf => Rel::LeftOf,
+                Rel::Above => Rel::Below,
+                Rel::Below => Rel::Above,
+                r => r,
+            }),
+            _ => return None,
+        };
+        cells.get(peer).map(|c| (rel, *c))
+    });
+    hinted.fold(Wish { min_col: 0, max_col: i32::MAX, row: None, below: None, cols: false, any: false }, |w, (rel, c)| {
+        let next = match rel {
+            Rel::SameCol => Wish { min_col: w.min_col.max(c.col), max_col: w.max_col.min(c.col), ..w },
+            Rel::RightOf => Wish { min_col: w.min_col.max(c.col + 1), ..w },
+            Rel::LeftOf => Wish { max_col: w.max_col.min(c.col - 1), ..w },
+            Rel::SameRow => Wish { row: w.row.or(Some(c.row)), ..w },
+            Rel::Below => Wish { below: w.below.or(Some(c.row + 1)), ..w },
+            _ => return w,
+        };
+        let col_wish = matches!(rel, Rel::SameCol | Rel::RightOf | Rel::LeftOf);
+        if col_wish && next.min_col > next.max_col { w } else { Wish { any: true, cols: w.cols || col_wish, ..next } }
+    })
+}
+
+/// nodes without data edges go to the bottom band, as close to their anchor column as possible;
+/// hints to placed nodes decide their column and first row instead of the anchor
 fn place_secondary(g: &Graph, cells: &mut IndexMap<String, Cell>) {
     let mut pending: Vec<String> = g.nodes.iter().map(|n| n.id.clone()).filter(|id| !cells.contains_key(id)).collect();
     let mut taken: IndexSet<String> = cells.values().map(cell_key).collect();
     let bottom_row = cells.values().map(|c| c.row).max().unwrap_or(0);
     while !pending.is_empty() {
-        let idx = pending.iter().position(|id| anchor_of(g, cells, id).is_some()).unwrap_or(0);
+        let idx = pending.iter().position(|id| anchor_of(g, cells, id).is_some() || wish_of(g, cells, id).any).unwrap_or(0);
         let id = pending.remove(idx);
+        let wish = wish_of(g, cells, &id);
         let (anchor, left_of) = anchor_of(g, cells, &id).unwrap_or((Cell { col: 0, row: bottom_row }, false));
-        let (min_col, max_col) = if left_of { (0, anchor.col) } else { (anchor.col, i32::MAX) };
-        let cell = nearest_free(&taken, anchor.col, bottom_row.max(anchor.row + 1), min_col, max_col);
+        let row = wish.row.or(wish.below.filter(|_| wish.cols)).unwrap_or(bottom_row.max(anchor.row + 1));
+        let cell = if wish.cols {
+            let col = if wish.max_col == i32::MAX { wish.min_col } else if wish.min_col == 0 { wish.max_col } else { wish.min_col };
+            nearest_free(&taken, col, row, wish.min_col, wish.max_col)
+        } else {
+            let (min_col, max_col) = if left_of { (0, anchor.col) } else { (anchor.col, i32::MAX) };
+            nearest_free(&taken, anchor.col, row, min_col, max_col)
+        };
         cells.insert(id, cell);
         taken.insert(cell_key(&cell));
     }
