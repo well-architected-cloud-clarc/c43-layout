@@ -39,5 +39,5 @@ Goal: a data edge is never routed against the left-to-right flow just to dodge c
 - The golden layouts of the engine's cases (aws, star16, rebob-system, rebob-container) are regenerated for the new costs; the whole test suite and the release build are green.
 
 ### Remaining
-- The c43-layout branch has to be pushed; then bump the c43-layout rev in clarc, commit clarc's regenerated goldens (phase1, phase2) and its reference-architecture test, and re-render. Until then clarc builds against the local checkout and ~/.local/share/clarc/clarc is built from it (already updated).
-- Optional later: exact forced-crossing pricing on shared stretches; the placement search's judging order (rebob-system).
+- Done: the branch is merged to main and pushed; clarc's c43-layout rev points at the merge commit, clarc's regenerated goldens (phase1, phase2) and its reference-architecture test are committed, and ~/.local/share/clarc/clarc is built from it.
+- Optional later: exact forced-crossing pricing on shared stretches (21 of the 43 shared-lane crossings on phase3-compact are forced); the placement search's judging order (it lets rebob-system pick a layout with 2 more crossings).
