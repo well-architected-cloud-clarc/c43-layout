@@ -24,8 +24,8 @@ Observed in ghost/phase3/phase3.compact.clarc.json: the edge "ro (email prefligh
 Goal: a data edge is never routed against the left-to-right flow just to dodge crossings; the router's idea of "crossing-free" must match what the final layout check counts.
 
 ### Part 1: flow direction in routing (implemented)
-- Routing cost stays lexicographic (crossings >> turns >> length). A new term charges every step that moves against the flow (towards smaller x) on a data edge, worth two crossings per step. Non-functional (nf) edges are exempt: they leave at the bottom and are not part of the story flow.
-- Rationale for the magnitude: a backward step must lose against any route that needs at most a couple of crossings, so a long detour round the diagram cannot win on length-free "zero crossings"; it is still finite, so an edge whose target really lies to the left remains routable.
+- Routing cost stays lexicographic (crossings >> turns >> length). A new term charges every step that moves against the flow (towards smaller x) on a data edge, worth half a crossing per step. Non-functional (nf) edges are exempt: they leave at the bottom and are not part of the story flow.
+- Rationale for the magnitude: many backward steps (a long detour round the diagram, 6+ steps in phase3) must lose against a route with a crossing or two, while a single short hop back must still beat a crossing. Measured on the reference diagrams: at one crossing per step or more, phase2 and azure-phase2 got a crossing (the IAM role -> data bucket edge cut the SMTP edge instead of hopping back one step); at 0.25 to 0.9 they stay at 0, and phase3-compact still loses its ring (35 crossings, no edge left of its start). Chosen: half a crossing. It is finite, so an edge whose target really lies to the left remains routable. First tried at two crossings (changed here after the phase2 regression).
 - Rejected: a hard ban on leftward steps (breaks edges whose target is left of the source, no route possible); a per-pixel penalty (detour length is otherwise free, and a per-pixel scale would have to be tuned against CROSS).
 - Rejected: cutting the group-intrusion cost. Crossing a group that holds neither end stays expensive; the fix is about direction, not about groups.
 
@@ -45,6 +45,7 @@ Goal: a data edge is never routed against the left-to-right flow just to dodge c
 
 ### Remaining
 - Bump the c43-layout rev in clarc (needs the branch pushed; until then clarc builds against the local checkout), rebuild, update ~/.local/share/clarc/clarc, re-render ghost/phase3/phase3.compact.clarc.json.
+
 
 
 

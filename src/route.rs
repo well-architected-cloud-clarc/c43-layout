@@ -8,12 +8,14 @@ use indexmap::{IndexMap, IndexSet};
 const TURN: f64 = 10_000.0;
 /// a crossing costs more than any number of turns: IDEA ranks "no crossings" above "fewest turns"
 const CROSS: f64 = 1_000_000.0;
-/// a step against the left-to-right flow on a data edge costs two crossings: a detour round the diagram never pays off
-const BACK: f64 = 2.0 * CROSS;
 /// a step along a lane that another route already uses: routes sharing a lane have to swap tracks wherever
 /// they enter or leave it in opposite order, which the track step cannot undo. Small next to a turn, so it only
 /// breaks ties between routes of similar length (the result is the same anywhere in 5..200)
 const SHARE: f64 = 60.0;
+/// a step against the left-to-right flow on a data edge costs half a crossing: a long detour round the diagram
+/// (many such steps) never pays off, while one short hop back still beats a crossing. At a full crossing or more
+/// the router takes a crossing over a one-step hop back (phase2: the IAM role -> data bucket edge cuts the SMTP edge)
+const BACK: f64 = CROSS / 2.0;
 const RIP_UP_ROUNDS: usize = 3;
 const EPS: f64 = 1e-9;
 
