@@ -1,0 +1,415 @@
+{
+  "kinds": [
+    {
+      "from": "viewer",
+      "to": "cdn",
+      "kind": "data"
+    },
+    {
+      "from": "cdn",
+      "to": "content",
+      "kind": "data"
+    },
+    {
+      "from": "cdn",
+      "to": "apigw",
+      "kind": "data"
+    },
+    {
+      "from": "readers",
+      "to": "content",
+      "kind": "data"
+    },
+    {
+      "from": "admin",
+      "to": "content",
+      "kind": "data"
+    },
+    {
+      "from": "admin",
+      "to": "queue",
+      "kind": "data"
+    },
+    {
+      "from": "admin",
+      "to": "bg",
+      "kind": "data"
+    },
+    {
+      "from": "gen",
+      "to": "content",
+      "kind": "data"
+    },
+    {
+      "from": "events",
+      "to": "bg",
+      "kind": "data"
+    },
+    {
+      "from": "bg",
+      "to": "queue",
+      "kind": "data"
+    },
+    {
+      "from": "bg",
+      "to": "smtp",
+      "kind": "data"
+    },
+    {
+      "from": "readers",
+      "to": "data",
+      "kind": "data"
+    },
+    {
+      "from": "admin",
+      "to": "data",
+      "kind": "data"
+    },
+    {
+      "from": "bg",
+      "to": "data",
+      "kind": "data"
+    },
+    {
+      "from": "gen",
+      "to": "data",
+      "kind": "data"
+    },
+    {
+      "from": "bg",
+      "to": "ssm",
+      "kind": "nf"
+    },
+    {
+      "from": "cdn",
+      "to": "cw",
+      "kind": "nf"
+    },
+    {
+      "from": "bg",
+      "to": "cw",
+      "kind": "nf"
+    },
+    {
+      "from": "apigw",
+      "to": "admin",
+      "kind": "data"
+    },
+    {
+      "from": "apigw",
+      "to": "readers",
+      "kind": "data"
+    },
+    {
+      "from": "queue",
+      "to": "gen",
+      "kind": "data"
+    },
+    {
+      "from": "bg",
+      "to": "content",
+      "kind": "data"
+    },
+    {
+      "from": "admin",
+      "to": "events",
+      "kind": "data"
+    },
+    {
+      "from": "queue",
+      "to": "dlq",
+      "kind": "data"
+    },
+    {
+      "from": "dlq",
+      "to": "cw",
+      "kind": "nf"
+    },
+    {
+      "from": "gen",
+      "to": "cw",
+      "kind": "nf"
+    },
+    {
+      "from": "apigw",
+      "to": "cw",
+      "kind": "nf"
+    },
+    {
+      "from": "cw",
+      "to": "sns",
+      "kind": "nf"
+    },
+    {
+      "from": "admin",
+      "to": "smtp",
+      "kind": "data"
+    },
+    {
+      "from": "admin",
+      "to": "ssm",
+      "kind": "nf"
+    },
+    {
+      "from": "deploy",
+      "to": "readers",
+      "kind": "nf"
+    },
+    {
+      "from": "deploy",
+      "to": "admin",
+      "kind": "nf"
+    },
+    {
+      "from": "deploy",
+      "to": "gen",
+      "kind": "nf"
+    },
+    {
+      "from": "deploy",
+      "to": "bg",
+      "kind": "nf"
+    }
+  ],
+  "placement": [
+    {
+      "rel": "leftmost",
+      "a": "viewer",
+      "priority": true
+    },
+    {
+      "rel": "right-of",
+      "a": "cdn",
+      "b": "viewer",
+      "priority": false
+    },
+    {
+      "rel": "same-row",
+      "a": "cdn",
+      "b": "viewer",
+      "priority": false
+    },
+    {
+      "rel": "right-of",
+      "a": "apigw",
+      "b": "cdn",
+      "priority": false
+    },
+    {
+      "rel": "same-row",
+      "a": "apigw",
+      "b": "cdn",
+      "priority": false
+    },
+    {
+      "rel": "right-of",
+      "a": "admin",
+      "b": "apigw",
+      "priority": false
+    },
+    {
+      "rel": "same-row",
+      "a": "admin",
+      "b": "apigw",
+      "priority": false
+    },
+    {
+      "rel": "below",
+      "a": "readers",
+      "b": "admin",
+      "priority": false
+    },
+    {
+      "rel": "same-col",
+      "a": "readers",
+      "b": "admin",
+      "priority": false
+    },
+    {
+      "rel": "above",
+      "a": "bg",
+      "b": "admin",
+      "priority": false
+    },
+    {
+      "rel": "same-col",
+      "a": "bg",
+      "b": "admin",
+      "priority": false
+    },
+    {
+      "rel": "left-of",
+      "a": "events",
+      "b": "bg",
+      "priority": false
+    },
+    {
+      "rel": "same-row",
+      "a": "events",
+      "b": "bg",
+      "priority": false
+    },
+    {
+      "rel": "right-of",
+      "a": "queue",
+      "b": "bg",
+      "priority": false
+    },
+    {
+      "rel": "same-row",
+      "a": "queue",
+      "b": "bg",
+      "priority": false
+    },
+    {
+      "rel": "right-of",
+      "a": "gen",
+      "b": "queue",
+      "priority": false
+    },
+    {
+      "rel": "same-row",
+      "a": "gen",
+      "b": "bg",
+      "priority": false
+    },
+    {
+      "rel": "below",
+      "a": "content",
+      "b": "data",
+      "priority": false
+    },
+    {
+      "rel": "same-col",
+      "a": "content",
+      "b": "data",
+      "priority": false
+    },
+    {
+      "rel": "right-of",
+      "a": "data",
+      "b": "admin",
+      "priority": false
+    },
+    {
+      "rel": "same-row",
+      "a": "data",
+      "b": "admin",
+      "priority": false
+    },
+    {
+      "rel": "same-col",
+      "a": "data",
+      "b": "gen",
+      "priority": false
+    },
+    {
+      "rel": "above",
+      "a": "smtp",
+      "b": "bg",
+      "priority": false
+    },
+    {
+      "rel": "same-col",
+      "a": "smtp",
+      "b": "bg",
+      "priority": false
+    },
+    {
+      "rel": "right-of",
+      "a": "ssm",
+      "b": "smtp",
+      "priority": false
+    },
+    {
+      "rel": "same-row",
+      "a": "ssm",
+      "b": "smtp",
+      "priority": false
+    },
+    {
+      "rel": "above",
+      "a": "dlq",
+      "b": "queue",
+      "priority": false
+    },
+    {
+      "rel": "same-col",
+      "a": "dlq",
+      "b": "queue",
+      "priority": false
+    },
+    {
+      "rel": "below",
+      "a": "cw",
+      "b": "readers",
+      "priority": false
+    },
+    {
+      "rel": "same-col",
+      "a": "cw",
+      "b": "readers",
+      "priority": false
+    },
+    {
+      "rel": "left-of",
+      "a": "sns",
+      "b": "cw",
+      "priority": false
+    },
+    {
+      "rel": "same-row",
+      "a": "sns",
+      "b": "cw",
+      "priority": false
+    },
+    {
+      "rel": "left-of",
+      "a": "deploy",
+      "b": "sns",
+      "priority": false
+    },
+    {
+      "rel": "same-row",
+      "a": "deploy",
+      "b": "cw",
+      "priority": false
+    }
+  ],
+  "sizes": {
+    "node": {
+      "viewer": 9.0,
+      "cdn": 12.0,
+      "content": 10.0,
+      "apigw": 10.0,
+      "readers": 12.0,
+      "admin": 10.0,
+      "gen": 8.0,
+      "bg": 11.0,
+      "events": 10.0,
+      "data": 8.0,
+      "smtp": 8.0,
+      "ssm": 9.0,
+      "cw": 9.0,
+      "queue": 9.0,
+      "dlq": 8.0,
+      "sns": 8.0,
+      "deploy": 9.0
+    },
+    "groupTitle": {
+      "g_readers": 9.248399999999998,
+      "g_admin": 6.9858,
+      "g_gen": 7.1442000000000005,
+      "g_bg": 8.682599999999999
+    },
+    "titleHeight": 1.0,
+    "titleBottom": false
+  },
+  "gravity": true,
+  "pull_sources": false,
+  "join_ports": {
+    "inbound": false,
+    "outbound": false,
+    "all": true
+  }
+}

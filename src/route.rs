@@ -8,6 +8,14 @@ use indexmap::{IndexMap, IndexSet};
 const TURN: f64 = 10_000.0;
 /// a crossing costs more than any number of turns: IDEA ranks "no crossings" above "fewest turns"
 const CROSS: f64 = 1_000_000.0;
+/// a step along a lane that another route already uses: routes sharing a lane have to swap tracks wherever
+/// they enter or leave it in opposite order, which the track step cannot undo. Small next to a turn, so it only
+/// breaks ties between routes of similar length (the result is the same anywhere in 5..200)
+const SHARE: f64 = 60.0;
+/// a step against the left-to-right flow on a data edge costs half a crossing: a long detour round the diagram
+/// (many such steps) never pays off, while one short hop back still beats a crossing. At a full crossing or more
+/// the router takes a crossing over a one-step hop back (phase2: the IAM role -> data bucket edge cuts the SMTP edge)
+const BACK: f64 = CROSS / 2.0;
 const RIP_UP_ROUNDS: usize = 3;
 const EPS: f64 = 1e-9;
 
@@ -37,7 +45,7 @@ pub fn route_all(g: &Graph, p: &Placement, ports: &Ports) -> Vec<Route> {
         let ends: IndexSet<String> = chain(g, &e.from).into_iter().chain(chain(g, &e.to)).collect();
         let foreign: Vec<GBox> = boxes.iter().filter(|(id, _)| !ends.contains(*id)).map(|(_, b)| *b).collect();
         let region = if own.is_empty() { None } else { boxes.get(&own).copied() };
-        Route { edge, lanes: route_edge(p, &taken, &geo, &e.from, &si, &e.to, &ti, obs, region, &foreign) }
+        Route { edge, lanes: route_edge(p, &taken, &geo, &e.from, &si, &e.to, &ti, obs, region, &foreign, e.kind != Kind::Nf) }
     };
     // seed: data edges first (the story), nf edges after, each seeing what is already drawn
     let mut routes: Vec<Route> = g.edges.iter().map(|e| Route { edge: e.id, lanes: vec![] }).collect();
@@ -113,7 +121,7 @@ struct Step {
 #[allow(clippy::too_many_arguments)]
 fn route_edge(
     p: &Placement, taken: &IndexSet<String>, geo: &Geom, from: &str, si: &EndInfo, to: &str, ti: &EndInfo, obs: &Obstacles,
-    region: Option<GBox>, foreign: &[GBox],
+    region: Option<GBox>, foreign: &[GBox], data: bool,
 ) -> Vec<Lane> {
     let sp = end_point(geo, p, from, si, None);
     let tp = end_point(geo, p, to, ti, None);
@@ -177,9 +185,11 @@ fn route_edge(
                 continue;
             }
             let n_cuts = cuts.iter().filter(|c| **c > a.1 + EPS && **c < b.1 - EPS).count();
-            let len = b.1 - a.1 + CROSS * (n_cuts + intrusions(lane, (a.1 + b.1) / 2.0)) as f64;
+            let shared = obs.segs.get(key).map_or(0, |ss| ss.iter().filter(|(lo, hi)| *lo < b.1 - EPS && *hi > a.1 + EPS).count());
+            let len = b.1 - a.1 + CROSS * (n_cuts + intrusions(lane, (a.1 + b.1) / 2.0)) as f64 + SHARE * shared as f64;
             adj.entry(a.0).or_default().push(Step { to: b.0, len, lane: key.clone(), dir: 1 });
-            adj.entry(b.0).or_default().push(Step { to: a.0, len, lane: key.clone(), dir: -1 });
+            let back = if data && lane.dir == Dir::H { BACK } else { 0.0 };
+            adj.entry(b.0).or_default().push(Step { to: a.0, len: len + back, lane: key.clone(), dir: -1 });
         }
     }
 
