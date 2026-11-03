@@ -78,6 +78,8 @@ fn data_edge_never_detours_backwards_round_the_diagram() {
     let start = e.points[0].x;
     let worst = e.points.iter().map(|p| start - p.x).fold(f64::MIN, f64::max);
     assert!(worst <= 1e-9, "edge runs {worst} left of its start: {:?}", e.points);
-    // routes avoid lanes other routes already use: 45 crossings without the shared-lane cost, 31 with it
-    assert!(r.metrics.crossings <= 35, "crossings {}", r.metrics.crossings);
+    // routes avoid lanes other routes already use (the shared-lane cost); the snapshot is the ghost phase3 compact diagram
+    assert!(r.metrics.crossings <= 30, "crossings {}", r.metrics.crossings);
+    // its hints on nf-only, edge-less and ungrouped nodes (alarm topic, deploy bucket, Mailgun, SMTP provider) all hold
+    assert!(r.metrics.ignored_hints.is_empty(), "{:?}", r.metrics.ignored_hints);
 }

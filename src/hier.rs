@@ -188,6 +188,30 @@ fn expand(g: &Graph, level: &str, kids: &[String], solve: &Solve, title_cols: &T
             work.extend(peers(&n).into_iter().filter(|p| kids.contains(p) && !sub.contains_key(p)).map(|p| (p, row)));
         }
     }
+    // a same-row hint between nodes inside two different sibling blocks: the subject moves within its block's
+    // row span onto its peer's row (swapping with whoever sits there), as long as that satisfies more hints than before
+    for h in crate::hints::priority_last(g).into_iter().filter(|h| h.rel == Rel::SameRow) {
+        let Some(peer) = &h.b else { continue };
+        let (Some(ka), Some(kb)) = (child_of(g, level, &h.a), child_of(g, level, peer)) else { continue };
+        if ka == kb || !sub.contains_key(&ka) || !sub.contains_key(&kb) {
+            continue;
+        }
+        let (Some(a), Some(b)) = (block.cells.get(&h.a).copied(), block.cells.get(peer).copied()) else { continue };
+        let span = block.boxes[&ka];
+        if a.row == b.row || b.row < span.row0 || b.row > span.row1 {
+            continue;
+        }
+        let mut cells = block.cells.clone();
+        let target = Cell { col: a.col, row: b.row };
+        if let Some(o) = cells.iter().find(|(id, c)| **c == target && **id != h.a).map(|(id, _)| id.clone()) {
+            cells[&o].row = a.row;
+        }
+        cells[&h.a].row = b.row;
+        let seen = |cells: &IndexMap<String, Cell>| Placement { cols: block.cols, rows: block.rows, cells: cells.clone(), groups: Some(block.boxes.clone()) };
+        if crate::hints::violated(&g.placement, &seen(&cells)) < crate::hints::violated(&g.placement, &seen(&block.cells)) {
+            block.cells = cells;
+        }
+    }
     block
 }
 

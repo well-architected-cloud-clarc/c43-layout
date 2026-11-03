@@ -52,7 +52,7 @@
     },
     {
       "from": "bg",
-      "to": "smtp",
+      "to": "mailgun",
       "kind": "data"
     },
     {
@@ -149,26 +149,6 @@
       "from": "admin",
       "to": "ssm",
       "kind": "nf"
-    },
-    {
-      "from": "deploy",
-      "to": "readers",
-      "kind": "nf"
-    },
-    {
-      "from": "deploy",
-      "to": "admin",
-      "kind": "nf"
-    },
-    {
-      "from": "deploy",
-      "to": "gen",
-      "kind": "nf"
-    },
-    {
-      "from": "deploy",
-      "to": "bg",
-      "kind": "nf"
     }
   ],
   "placement": [
@@ -232,12 +212,6 @@
       "priority": false
     },
     {
-      "rel": "same-col",
-      "a": "bg",
-      "b": "admin",
-      "priority": false
-    },
-    {
       "rel": "left-of",
       "a": "events",
       "b": "bg",
@@ -298,43 +272,31 @@
       "priority": false
     },
     {
-      "rel": "same-col",
-      "a": "data",
-      "b": "gen",
-      "priority": false
-    },
-    {
-      "rel": "above",
-      "a": "smtp",
-      "b": "bg",
-      "priority": false
-    },
-    {
-      "rel": "same-col",
-      "a": "smtp",
-      "b": "bg",
-      "priority": false
-    },
-    {
       "rel": "right-of",
-      "a": "ssm",
-      "b": "smtp",
+      "a": "smtp",
+      "b": "data",
       "priority": false
     },
     {
       "rel": "same-row",
-      "a": "ssm",
-      "b": "smtp",
+      "a": "smtp",
+      "b": "data",
       "priority": false
     },
     {
       "rel": "above",
-      "a": "dlq",
-      "b": "queue",
+      "a": "ssm",
+      "b": "bg",
       "priority": false
     },
     {
       "rel": "same-col",
+      "a": "ssm",
+      "b": "bg",
+      "priority": false
+    },
+    {
+      "rel": "above",
       "a": "dlq",
       "b": "queue",
       "priority": false
@@ -346,33 +308,39 @@
       "priority": false
     },
     {
+      "rel": "right-of",
+      "a": "sns",
+      "b": "cw",
+      "priority": false
+    },
+    {
+      "rel": "same-row",
+      "a": "sns",
+      "b": "cw",
+      "priority": false
+    },
+    {
+      "rel": "below",
+      "a": "deploy",
+      "b": "content",
+      "priority": false
+    },
+    {
       "rel": "same-col",
-      "a": "cw",
-      "b": "readers",
+      "a": "deploy",
+      "b": "content",
       "priority": false
     },
     {
-      "rel": "left-of",
-      "a": "sns",
-      "b": "cw",
+      "rel": "right-of",
+      "a": "mailgun",
+      "b": "dlq",
       "priority": false
     },
     {
       "rel": "same-row",
-      "a": "sns",
-      "b": "cw",
-      "priority": false
-    },
-    {
-      "rel": "left-of",
-      "a": "deploy",
-      "b": "sns",
-      "priority": false
-    },
-    {
-      "rel": "same-row",
-      "a": "deploy",
-      "b": "cw",
+      "a": "mailgun",
+      "b": "dlq",
       "priority": false
     }
   ],
@@ -394,9 +362,11 @@
       "queue": 9.0,
       "dlq": 8.0,
       "sns": 8.0,
-      "deploy": 9.0
+      "deploy": 9.0,
+      "mailgun": 10.0
     },
     "groupTitle": {
+      "aws": 3.123,
       "g_readers": 9.248399999999998,
       "g_admin": 6.9858,
       "g_gen": 7.1442000000000005,
