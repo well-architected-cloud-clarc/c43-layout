@@ -1,3 +1,6 @@
+ID: ke8fg | Severity: med | Status: doing
+Title: Router Detours Backwards Around The Diagram Instead Of Crossing
+---
 Observed in ghost/phase3/phase3.compact.clarc.json: the edge "ro (email preflight)" (bg -> content, edge 21) leaves the bottom of bg, runs left to x=50 (past the leftmost node), down to y=1390, then right to x=2810 and enters content from its left side. It breaks the left-to-right flow rule and still crosses ~10 edges (6, 11, 16, 19, 22, 25, 26, 28, 29, 31) according to the layout check.
 
 ## Cause (src/route.rs)
@@ -43,6 +46,7 @@ Goal: a data edge is never routed against the left-to-right flow just to dodge c
 ### Remaining
 - Part 2.
 - Bump the c43-layout rev in clarc, rebuild, update ~/.local/share/clarc/clarc, re-render ghost/phase3/phase3.compact.clarc.json.
+
 
 
 

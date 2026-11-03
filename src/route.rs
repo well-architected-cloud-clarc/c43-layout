@@ -10,6 +10,10 @@ const TURN: f64 = 10_000.0;
 const CROSS: f64 = 1_000_000.0;
 /// a step against the left-to-right flow on a data edge costs two crossings: a detour round the diagram never pays off
 const BACK: f64 = 2.0 * CROSS;
+/// a step along a lane that another route already uses: routes sharing a lane have to swap tracks wherever
+/// they enter or leave it in opposite order, which the track step cannot undo. Small next to a turn, so it only
+/// breaks ties between routes of similar length (the result is the same anywhere in 5..200)
+const SHARE: f64 = 60.0;
 const RIP_UP_ROUNDS: usize = 3;
 const EPS: f64 = 1e-9;
 
@@ -179,7 +183,8 @@ fn route_edge(
                 continue;
             }
             let n_cuts = cuts.iter().filter(|c| **c > a.1 + EPS && **c < b.1 - EPS).count();
-            let len = b.1 - a.1 + CROSS * (n_cuts + intrusions(lane, (a.1 + b.1) / 2.0)) as f64;
+            let shared = obs.segs.get(key).map_or(0, |ss| ss.iter().filter(|(lo, hi)| *lo < b.1 - EPS && *hi > a.1 + EPS).count());
+            let len = b.1 - a.1 + CROSS * (n_cuts + intrusions(lane, (a.1 + b.1) / 2.0)) as f64 + SHARE * shared as f64;
             adj.entry(a.0).or_default().push(Step { to: b.0, len, lane: key.clone(), dir: 1 });
             let back = if data && lane.dir == Dir::H { BACK } else { 0.0 };
             adj.entry(b.0).or_default().push(Step { to: a.0, len: len + back, lane: key.clone(), dir: -1 });

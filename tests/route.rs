@@ -78,4 +78,6 @@ fn data_edge_never_detours_backwards_round_the_diagram() {
     let start = e.points[0].x;
     let worst = e.points.iter().map(|p| start - p.x).fold(f64::MIN, f64::max);
     assert!(worst <= 1e-9, "edge runs {worst} left of its start: {:?}", e.points);
+    // routes avoid lanes other routes already use: 45 crossings without the shared-lane cost, 31 with it
+    assert!(r.metrics.crossings <= 35, "crossings {}", r.metrics.crossings);
 }
