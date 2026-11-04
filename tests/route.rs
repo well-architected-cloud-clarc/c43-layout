@@ -83,3 +83,15 @@ fn data_edge_never_detours_backwards_round_the_diagram() {
     // its hints on nf-only, edge-less and ungrouped nodes (alarm topic, deploy bucket, Mailgun, SMTP provider) all hold
     assert!(r.metrics.ignored_hints.is_empty(), "{:?}", r.metrics.ignored_hints);
 }
+
+/// two ungrouped nodes that each line up with a member of the same group (SMTP with the bucket, Mailgun with the
+/// dead-letter queue) still share a column when a hint says so
+#[test]
+fn same_col_holds_between_two_nodes_lined_up_with_members_of_one_group() {
+    let (g, mut h) = common::load_case("phase3-compact");
+    h.placement.push(serde_json::from_value(serde_json::json!({"rel":"same-col","a":"mailgun","b":"smtp","priority":false})).unwrap());
+    let r = c43_layout::layout(&g, &h, &Default::default()).unwrap();
+    let col = |id: &str| r.layout.nodes.iter().find(|n| n.id == id).unwrap().col;
+    assert_eq!(col("mailgun"), col("smtp"));
+    assert!(r.metrics.ignored_hints.is_empty(), "{:?}", r.metrics.ignored_hints);
+}

@@ -387,3 +387,13 @@ fn two_nodes_lined_up_with_the_same_node_both_get_its_row() {
     assert_eq!(col_row(&r, "y").1, col_row(&r, "g").1);
     assert!(r.metrics.ignored_hints.is_empty(), "{:?}", r.metrics.ignored_hints);
 }
+
+#[test]
+fn same_col_holds_between_ungrouped_nodes_fed_from_different_child_groups() {
+    let g = json!({"groups":[{"id":"G"},{"id":"H1","group":"G"},{"id":"H2","group":"G"}],
+      "nodes":[{"id":"v"},{"id":"c","group":"G"},{"id":"a","group":"H1"},{"id":"b","group":"H2"},{"id":"dlq","group":"G"},{"id":"q","group":"G"},{"id":"smtp"},{"id":"mg"}],
+      "edges":[{"from":"v","to":"c"},{"from":"c","to":"a"},{"from":"a","to":"b"},{"from":"b","to":"q"},{"from":"q","to":"dlq"},{"from":"a","to":"smtp"},{"from":"b","to":"mg"}]});
+    let r = run(g, json!([{"rel":"same-col","a":"smtp","b":"mg"},{"rel":"same-row","a":"smtp","b":"a"},{"rel":"same-row","a":"mg","b":"dlq"}]));
+    assert_eq!(col_row(&r, "smtp").0, col_row(&r, "mg").0);
+    assert!(r.metrics.ignored_hints.is_empty(), "{:?}", r.metrics.ignored_hints);
+}

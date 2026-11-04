@@ -212,6 +212,29 @@ fn expand(g: &Graph, level: &str, kids: &[String], solve: &Solve, title_cols: &T
             block.cells = cells;
         }
     }
+    // two plain nodes with a same-col hint that each line up with a member of some block sit on different rows of one
+    // macro row, so the level's layout put them side by side (same row hints at the macro level forbid a shared column):
+    // the subject joins its peer's column when the cell there is free
+    for h in crate::hints::priority_last(g).into_iter().filter(|h| h.rel == Rel::SameCol) {
+        let Some(peer) = &h.b else { continue };
+        if !kids.contains(&h.a) || !kids.contains(peer) || sub.contains_key(&h.a) || sub.contains_key(peer) {
+            continue;
+        }
+        let (Some(a), Some(b)) = (block.cells.get(&h.a).copied(), block.cells.get(peer).copied()) else { continue };
+        let target = Cell { col: b.col, row: a.row };
+        let taken = block.cells.values().any(|c| *c == target)
+            || block.boxes.values().any(|x| x.col0 <= target.col && target.col <= x.col1 && x.row0 <= target.row && target.row <= x.row1);
+        if a.col == b.col || taken {
+            continue;
+        }
+        let mut cells = block.cells.clone();
+        cells[&h.a] = target;
+        let seen = |cells: &IndexMap<String, Cell>| Placement { cols: block.cols, rows: block.rows, cells: cells.clone(), groups: Some(block.boxes.clone()) };
+        if crate::hints::violated(&g.placement, &seen(&cells)) < crate::hints::violated(&g.placement, &seen(&block.cells)) {
+            block.cells = cells;
+            drop_empty_lines(&mut block);
+        }
+    }
     block
 }
 
