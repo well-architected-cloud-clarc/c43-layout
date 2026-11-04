@@ -36,17 +36,7 @@ pub fn route_all(g: &Graph, p: &Placement, ports: &Ports) -> Vec<Route> {
     let taken: IndexSet<String> = p.cells.values().map(cell_key).collect();
     let empty = IndexMap::new();
     let boxes = p.groups.as_ref().unwrap_or(&empty);
-    let one = |edge: usize, obs: &Obstacles| -> Route {
-        let e = &g.edges[edge];
-        let si = end_info(ports, &e.from, e.id, End::Src);
-        let ti = end_info(ports, &e.to, e.id, End::Dst);
-        // stay inside the group holding both ends; avoid the inside of groups holding neither
-        let own = owner(g, &e.from, &e.to);
-        let ends: IndexSet<String> = chain(g, &e.from).into_iter().chain(chain(g, &e.to)).collect();
-        let foreign: Vec<GBox> = boxes.iter().filter(|(id, _)| !ends.contains(*id)).map(|(_, b)| *b).collect();
-        let region = if own.is_empty() { None } else { boxes.get(&own).copied() };
-        Route { edge, lanes: route_edge(p, &taken, &geo, &e.from, &si, &e.to, &ti, obs, region, &foreign, e.kind != Kind::Nf) }
-    };
+    let one = |edge: usize, obs: &Obstacles| route_one(g, p, ports, &geo, &taken, boxes, edge, obs);
     // seed: data edges first (the story), nf edges after, each seeing what is already drawn
     let mut routes: Vec<Route> = g.edges.iter().map(|e| Route { edge: e.id, lanes: vec![] }).collect();
     let mut drawn: Vec<Route> = Vec::new();
@@ -72,6 +62,31 @@ pub fn route_all(g: &Graph, p: &Placement, ports: &Ports) -> Vec<Route> {
         }
     }
     routes
+}
+
+/// the edge alone on an empty diagram: the fewest-leg, shortest route the cost model knows (no other route to
+/// dodge); the candidate the straightening pass tries against the routed one
+pub fn route_alone(g: &Graph, p: &Placement, ports: &Ports, edge: usize) -> Route {
+    let geo = Geom::uniform(side_count(ports, Some(&g.group_ids)) as f64, 1.0);
+    let taken: IndexSet<String> = p.cells.values().map(cell_key).collect();
+    let empty = IndexMap::new();
+    route_one(g, p, ports, &geo, &taken, p.groups.as_ref().unwrap_or(&empty), edge, &Obstacles::default())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn route_one(
+    g: &Graph, p: &Placement, ports: &Ports, geo: &Geom, taken: &IndexSet<String>, boxes: &IndexMap<String, GBox>, edge: usize,
+    obs: &Obstacles,
+) -> Route {
+    let e = &g.edges[edge];
+    let si = end_info(ports, &e.from, e.id, End::Src);
+    let ti = end_info(ports, &e.to, e.id, End::Dst);
+    // stay inside the group holding both ends; avoid the inside of groups holding neither
+    let own = owner(g, &e.from, &e.to);
+    let ends: IndexSet<String> = chain(g, &e.from).into_iter().chain(chain(g, &e.to)).collect();
+    let foreign: Vec<GBox> = boxes.iter().filter(|(id, _)| !ends.contains(*id)).map(|(_, b)| *b).collect();
+    let region = if own.is_empty() { None } else { boxes.get(&own).copied() };
+    Route { edge, lanes: route_edge(p, taken, geo, &e.from, &si, &e.to, &ti, obs, region, &foreign, e.kind != Kind::Nf) }
 }
 
 fn obstacles(g: &Graph, p: &Placement, ports: &Ports, geo: &Geom, others: &[Route]) -> Obstacles {

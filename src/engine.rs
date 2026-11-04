@@ -3,12 +3,12 @@ use crate::hints;
 use crate::hier::{hier_place, title_cols_for};
 use crate::lanes::{borders, lane_plan, title_slots};
 use crate::layout::{build_layout, edge_polyline, frame_for, lane_keys};
-use crate::model::{Cell, Edge, Graph, Hints, InputGraph, Kind, LayoutResult, Placement, Rel, SizeHints, State};
+use crate::model::{Cell, Ports, Route, Edge, Graph, Hints, InputGraph, Kind, LayoutResult, Placement, Rel, SizeHints, State};
 use crate::normalize::normalize;
 use crate::place::{compact, place};
 use crate::ports::{assign_ports, join_ports, side_count, snap_ports};
 use crate::repair::{repair, RepairOptions};
-use crate::route::route_all;
+use crate::route::{route_alone, route_all};
 use crate::skeleton::skeleton;
 use crate::tracks::{assign_tracks, improve_tracks, lane_segments};
 
@@ -51,8 +51,17 @@ fn build_with(g: &Graph, s: &State, sizes: &SizeHints, min_s: f64, last: bool) -
     let p = &s.placement;
     let ports = &(if last && g.snap_ports { snap_ports(g, p, &s.ports) } else { s.ports.clone() });
     let ports = &(if last { join_ports(g, ports) } else { ports.clone() });
-    let routes = route_all(g, p, ports);
-    let segs = lane_segments(g, p, ports, &routes);
+    let mut routes = route_all(g, p, ports);
+    let mut best = finish_routes(g, p, ports, &routes, sizes, min_s);
+    if last {
+        best = straighten(g, p, ports, &mut routes, best, sizes, min_s);
+    }
+    best
+}
+
+/// routes → tracks → geometry → metrics
+fn finish_routes(g: &Graph, p: &Placement, ports: &Ports, routes: &[Route], sizes: &SizeHints, min_s: f64) -> LayoutResult {
+    let segs = lane_segments(g, p, ports, routes);
     let greedy = assign_tracks(&segs);
     // while tracks are being improved every band may use the greedy range
     let side = min_s.max(side_count(ports, Some(&g.group_ids)) as f64);
@@ -60,9 +69,35 @@ fn build_with(g: &Graph, s: &State, sizes: &SizeHints, min_s: f64, last: bool) -
     let f = frame_for(g, p, side, lane_plan(side, &borders(g, p), Box::new(move |_, _| k), title_slots(sizes), sizes.title_bottom, &lane_keys(p)), &segs);
     let edges: Vec<usize> = g.edges.iter().map(|e| e.id).collect();
     let tracks = improve_tracks(&segs, &greedy, &|edge, t| edge_polyline(g, p, ports, &f, &routes[edge], t), &edges);
-    let layout = build_layout(g, p, ports, &routes, &tracks, sizes, min_s, &segs);
+    let layout = build_layout(g, p, ports, routes, &tracks, sizes, min_s, &segs);
     let metrics = check(&layout);
     LayoutResult { version: 1, layout, metrics }
+}
+
+/// The router prices a crossing from lane segments alone; where another route's segment ends in a lane the route
+/// passes, only the track order decides. A route can therefore detour for a crossing the drawing does not avoid.
+/// For every route with more legs than it has alone on an empty diagram, try that route with the real tracks and
+/// polylines; keep it when the check's violations and crossings do not increase and the legs decrease.
+fn straighten(g: &Graph, p: &Placement, ports: &Ports, routes: &mut [Route], first: LayoutResult, sizes: &SizeHints, min_s: f64) -> LayoutResult {
+    let legs = |r: &Route| r.lanes.len();
+    let key = |r: &LayoutResult| (r.metrics.violations.len(), r.metrics.crossings);
+    let mut best = first;
+    let mut order: Vec<usize> = (0..routes.len()).collect();
+    order.sort_by_key(|i| std::cmp::Reverse(legs(&routes[*i])));
+    for i in order {
+        let cand = route_alone(g, p, ports, routes[i].edge);
+        if legs(&cand) >= legs(&routes[i]) {
+            continue;
+        }
+        let mut trial = routes.to_vec();
+        trial[i] = cand;
+        let r = finish_routes(g, p, ports, &trial, sizes, min_s);
+        if key(&r) <= key(&best) {
+            routes[i] = trial[i].clone();
+            best = r;
+        }
+    }
+    best
 }
 
 /// flat path: skeleton → place → repair
