@@ -95,3 +95,14 @@ fn same_col_holds_between_two_nodes_lined_up_with_members_of_one_group() {
     assert_eq!(col("mailgun"), col("smtp"));
     assert!(r.metrics.ignored_hints.is_empty(), "{:?}", r.metrics.ignored_hints);
 }
+
+/// phase3 compact: the API gateway -> reader group edge used to dodge a crossing the final drawing does not avoid
+/// (the other route's segment ends in the lane the detour drops through), taking 6+ legs instead of out, down, in
+#[test]
+fn route_does_not_detour_for_a_crossing_the_drawing_keeps_anyway() {
+    let (g, h) = common::load_case("phase3-compact");
+    let r = c43_layout::layout(&g, &h, &Default::default()).unwrap();
+    let e = r.layout.edges.iter().find(|e| e.from == "apigw" && e.to == "readers").unwrap();
+    assert!(e.points.len() - 1 <= 3, "{} legs: {:?}", e.points.len() - 1, e.points);
+    assert!(r.metrics.crossings <= 26, "crossings {}", r.metrics.crossings);
+}
